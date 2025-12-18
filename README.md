@@ -1,8 +1,11 @@
 # SousChef AI 👨‍🍳
 
-A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs, ask questions, get recipe advice, and have a natural conversation about food — all through voice!
+A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs, ask questions, get recipe advice, create shopping lists and timers and have a natural conversation about food — all through voice!
 
 🌐 **[Live Demo](https://main.d2iyik5u6ri7ha.amplifyapp.com/)**
+
+<img width="1280" height="1422" alt="demo" src="https://github.com/user-attachments/assets/668759f5-ae6c-4409-b8e4-19d948716646" />
+
 
 ---
 
