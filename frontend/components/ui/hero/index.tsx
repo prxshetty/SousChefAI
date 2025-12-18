@@ -44,16 +44,21 @@ export function HeroSection({ livekitUrl }: HeroSectionProps) {
     }
 
     // Handle voice selection
+    const [isConnecting, setIsConnecting] = useState(false)
+
     const handleVoiceSelect = async (voice: "male" | "female") => {
+        if (isConnecting || token) return
+
+        setIsConnecting(true)
         setSelectedVoice(voice)
 
-        // Get token and connect
         try {
             const response = await fetch(`/api/token?voice=${voice}`)
             const data = await response.json()
 
             if (data.error) {
                 console.error("Token error:", data.error)
+                setIsConnecting(false)
                 return
             }
 
@@ -62,10 +67,11 @@ export function HeroSection({ livekitUrl }: HeroSectionProps) {
             setViewState("voice-active")
         } catch (error) {
             console.error("Failed to connect:", error)
+        } finally {
+            setIsConnecting(false)
         }
     }
 
-    // Find agent participant in the room
     const findAgentParticipant = useCallback((): RemoteParticipant | null => {
         if (!roomRef.current) return null
 

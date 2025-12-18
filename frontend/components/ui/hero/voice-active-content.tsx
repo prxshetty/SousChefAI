@@ -8,12 +8,14 @@ import {
     RoomAudioRenderer,
     useConnectionState,
     useRoomContext,
+    useMultibandTrackVolume,
 } from "@livekit/components-react"
-import { ConnectionState, RoomEvent, TranscriptionSegment, Participant } from "livekit-client"
+import { ConnectionState, RoomEvent, TranscriptionSegment, Participant, DataPacket_Kind } from "livekit-client"
 
 import { cn } from "@/lib/utils"
-import { VoiceActiveContentProps, TranscriptEntry } from "./types"
+import { VoiceActiveContentProps, TranscriptEntry, Timer } from "./types"
 import { ChatPanel } from "./chat-panel"
+import { TimerDisplay } from "./timer-display"
 
 export function VoiceActiveContent({
     onUpload,
@@ -26,13 +28,16 @@ export function VoiceActiveContent({
     onDisconnect,
 }: VoiceActiveContentProps) {
     const connectionState = useConnectionState()
-    const { state: agentState } = useVoiceAssistant()
+    const { state: agentState, audioTrack: agentAudioTrack } = useVoiceAssistant()
     const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
     const [callDuration, setCallDuration] = useState(0)
     const [showChatPanel, setShowChatPanel] = useState(false)
     const [isMuted, setIsMuted] = useState(false)
+    const [timers, setTimers] = useState<Timer[]>([])
+    const [isHoveringDisconnect, setIsHoveringDisconnect] = useState(false)
     const room = useRoomContext()
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const audioVolumes = useMultibandTrackVolume(agentAudioTrack, { bands: 12 })// Cooler UI 
 
     // Track call duration
     useEffect(() => {
@@ -42,7 +47,42 @@ export function VoiceActiveContent({
         return () => clearInterval(interval)
     }, [])
 
-    // Subscribe to transcription events
+    useEffect(() => {
+        if (!room) return
+
+        const handleDataReceived = (
+            payload: Uint8Array,
+            participant?: Participant,
+            kind?: DataPacket_Kind
+        ) => {
+            try {
+                const data = JSON.parse(new TextDecoder().decode(payload))
+
+                if (data.type === "timer" && data.action === "start") {
+                    console.log("Timer received:", data)
+                    const newTimer: Timer = {
+                        id: data.id,
+                        label: data.label,
+                        totalSeconds: data.seconds,
+                        remainingSeconds: data.seconds,
+                        startedAt: Date.now(),
+                    }
+                    setTimers((prev) => [...prev, newTimer])
+                }
+            } catch (e) {
+            }
+        }
+
+        room.on(RoomEvent.DataReceived, handleDataReceived)
+        return () => {
+            room.off(RoomEvent.DataReceived, handleDataReceived)
+        }
+    }, [room])
+
+    const handleRemoveTimer = (id: string) => {
+        setTimers((prev) => prev.filter((t) => t.id !== id))
+    }
+
     useEffect(() => {
         if (!room) return
 
@@ -168,6 +208,9 @@ export function VoiceActiveContent({
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     style={{ width: showChatPanel ? "60%" : "100%" }}
                 >
+                    {/* Timer Display */}
+                    <TimerDisplay timers={timers} onRemoveTimer={handleRemoveTimer} />
+
                     {/* Previous transcript (smaller, faded) */}
                     <motion.div
                         className="flex flex-col items-center gap-2 min-h-[60px]"
@@ -207,6 +250,8 @@ export function VoiceActiveContent({
                         {/* LiveKit-aware Voice Control (click to disconnect) */}
                         <motion.button
                             onClick={handleMicClick}
+                            onMouseEnter={() => setIsHoveringDisconnect(true)}
+                            onMouseLeave={() => setIsHoveringDisconnect(false)}
                             className="flex p-3 border items-center justify-center rounded-full cursor-pointer hover:border-red-500 hover:bg-red-500/10 group transition-all bg-background/70 backdrop-blur-xl"
                             layout
                             transition={{ layout: { duration: 0.4 } }}
@@ -214,16 +259,18 @@ export function VoiceActiveContent({
                             <div className="h-6 w-6 items-center justify-center flex">
                                 {isActive ? (
                                     <motion.div
-                                        className="w-4 h-4 bg-primary group-hover:bg-red-500 rounded-sm transition-colors"
-                                        animate={{ rotate: [0, 180, 360] }}
+                                        className="w-4 h-4 bg-primary rounded group-hover:bg-red-500 transition-colors"
+                                        animate={{ rotate: isHoveringDisconnect ? 0 : [0, 180, 360] }}
                                         transition={{
-                                            duration: 2,
-                                            repeat: Infinity,
+                                            duration: isHoveringDisconnect ? 0.3 : 2,
+                                            repeat: isHoveringDisconnect ? 0 : Infinity,
                                             ease: "easeInOut",
                                         }}
                                     />
+                                ) : agentState === "thinking" ? (
+                                    <Loader2 className="size-5 animate-spin group-hover:text-red-500 transition-colors" />
                                 ) : (
-                                    <Mic className="size-5 group-hover:text-red-500 transition-colors" />
+                                    <div className="w-4 h-4 bg-primary group-hover:bg-red-500 rounded-full transition-colors" />
                                 )}
                             </div>
                             <AnimatePresence mode="wait">
@@ -235,23 +282,15 @@ export function VoiceActiveContent({
                                         transition={{ duration: 0.4 }}
                                         className="overflow-hidden flex gap-2 items-center justify-center"
                                     >
-                                        {/* Frequency Animation - synced with agent state */}
+                                        {/* Frequency Animation - synced with real audio */}
                                         <div className="flex gap-0.5 items-center justify-center">
-                                            {[...Array(12)].map((_, i) => (
-                                                <motion.div
+                                            {audioVolumes.map((vol, i) => (
+                                                <div
                                                     key={i}
                                                     className="w-0.5 bg-primary group-hover:bg-red-500 rounded-full transition-colors"
-                                                    initial={{ height: 2 }}
-                                                    animate={{
-                                                        height: isActive
-                                                            ? [2, 3 + Math.random() * 10, 3 + Math.random() * 5, 2]
-                                                            : 2,
-                                                    }}
-                                                    transition={{
-                                                        duration: isActive ? 1 : 0.3,
-                                                        repeat: isActive ? Infinity : 0,
-                                                        delay: isActive ? i * 0.05 : 0,
-                                                        ease: "easeInOut",
+                                                    style={{
+                                                        height: `${Math.max(2, 2 + vol * 14)}px`,
+                                                        transition: 'height 0.05s ease-out',
                                                     }}
                                                 />
                                             ))}

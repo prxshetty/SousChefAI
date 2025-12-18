@@ -39,3 +39,11 @@ export interface ChatPanelProps {
     transcript: TranscriptEntry[]
     onClose: () => void
 }
+
+export interface Timer {
+    id: string
+    label: string
+    totalSeconds: number
+    remainingSeconds: number
+    startedAt: number
+}
