@@ -1,0 +1,14 @@
+[project]
+name = "souschef-agent"
+version = "0.1.0"
+description = "SousChef AI - A RAG-enabled voice cooking assistant"
+requires-python = ">=3.11"
+dependencies = [
+    "livekit-agents[silero,turn-detector]~=1.3",
+    "livekit-plugins-noise-cancellation~=0.2",
+    "livekit-plugins-openai>=1.3.8",
+    "llama-index>=0.12.0",
+    "llama-index-embeddings-openai>=0.3.0",
+    "llama-index-llms-openai>=0.3.0",
+    "python-dotenv",
+]
