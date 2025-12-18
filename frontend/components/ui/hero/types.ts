@@ -47,3 +47,11 @@ export interface Timer {
     remainingSeconds: number
     startedAt: number
 }
+
+export interface ShoppingItem {
+    id: string
+    name: string
+    category: string
+    emoji: string
+    quantity: number
+}

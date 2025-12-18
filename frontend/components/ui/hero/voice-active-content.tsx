@@ -13,9 +13,10 @@ import {
 import { ConnectionState, RoomEvent, TranscriptionSegment, Participant, DataPacket_Kind } from "livekit-client"
 
 import { cn } from "@/lib/utils"
-import { VoiceActiveContentProps, TranscriptEntry, Timer } from "./types"
+import { VoiceActiveContentProps, TranscriptEntry, Timer, ShoppingItem } from "./types"
 import { ChatPanel } from "./chat-panel"
 import { TimerDisplay } from "./timer-display"
+import { ShoppingList } from "./shopping-list"
 
 export function VoiceActiveContent({
     onUpload,
@@ -34,6 +35,7 @@ export function VoiceActiveContent({
     const [showChatPanel, setShowChatPanel] = useState(false)
     const [isMuted, setIsMuted] = useState(false)
     const [timers, setTimers] = useState<Timer[]>([])
+    const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([])
     const [isHoveringDisconnect, setIsHoveringDisconnect] = useState(false)
     const room = useRoomContext()
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -58,16 +60,30 @@ export function VoiceActiveContent({
             try {
                 const data = JSON.parse(new TextDecoder().decode(payload))
 
-                if (data.type === "timer" && data.action === "start") {
-                    console.log("Timer received:", data)
-                    const newTimer: Timer = {
-                        id: data.id,
-                        label: data.label,
-                        totalSeconds: data.seconds,
-                        remainingSeconds: data.seconds,
-                        startedAt: Date.now(),
+                if (data.type === "timer") {
+                    if (data.action === "start") {
+                        console.log("Timer received:", data)
+                        const newTimer: Timer = {
+                            id: data.id,
+                            label: data.label,
+                            totalSeconds: data.seconds,
+                            remainingSeconds: data.seconds,
+                            startedAt: Date.now(),
+                        }
+                        setTimers((prev) => [...prev, newTimer])
+                    } else if (data.action === "clear_all") {
+                        console.log("Clearing all timers")
+                        setTimers([])
                     }
-                    setTimers((prev) => [...prev, newTimer])
+                }
+
+                if (data.type === "shopping_list") {
+                    console.log("Shopping list update:", data)
+                    if (data.action === "update") {
+                        setShoppingList(data.items || [])
+                    } else if (data.action === "clear") {
+                        setShoppingList([])
+                    }
                 }
             } catch (e) {
             }
@@ -81,6 +97,27 @@ export function VoiceActiveContent({
 
     const handleRemoveTimer = (id: string) => {
         setTimers((prev) => prev.filter((t) => t.id !== id))
+    }
+
+    const handleRemoveShoppingItem = (id: string) => {
+        setShoppingList((prev) => prev.filter((item) => item.id !== id))
+    }
+
+    const handleUpdateShoppingQuantity = (id: string, quantity: number) => {
+        if (quantity <= 0) {
+            // Remove item if quantity goes to 0
+            handleRemoveShoppingItem(id)
+        } else {
+            setShoppingList((prev) =>
+                prev.map((item) =>
+                    item.id === id ? { ...item, quantity } : item
+                )
+            )
+        }
+    }
+
+    const handleClearShoppingList = () => {
+        setShoppingList([])
     }
 
     useEffect(() => {
@@ -196,6 +233,25 @@ export function VoiceActiveContent({
         <>
             <RoomAudioRenderer />
 
+            {/* Shopping List - Fixed bottom-left */}
+            <AnimatePresence>
+                {shoppingList.length > 0 && (
+                    <ShoppingList
+                        items={shoppingList}
+                        onRemoveItem={handleRemoveShoppingItem}
+                        onUpdateQuantity={handleUpdateShoppingQuantity}
+                        onClearAll={handleClearShoppingList}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Timers - Fixed bottom-right */}
+            <AnimatePresence>
+                {timers.length > 0 && (
+                    <TimerDisplay timers={timers} onRemoveTimer={handleRemoveTimer} />
+                )}
+            </AnimatePresence>
+
             <div className={cn(
                 "flex w-full h-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
                 showChatPanel ? "gap-8" : ""
@@ -208,8 +264,6 @@ export function VoiceActiveContent({
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     style={{ width: showChatPanel ? "60%" : "100%" }}
                 >
-                    {/* Timer Display */}
-                    <TimerDisplay timers={timers} onRemoveTimer={handleRemoveTimer} />
 
                     {/* Previous transcript (smaller, faded) */}
                     <motion.div
@@ -282,7 +336,7 @@ export function VoiceActiveContent({
                                         transition={{ duration: 0.4 }}
                                         className="overflow-hidden flex gap-2 items-center justify-center"
                                     >
-                                        {/* Frequency Animation - synced with real audio */}
+                                        {/* Frequency Animation - synced with agent state */}
                                         <div className="flex gap-0.5 items-center justify-center">
                                             {audioVolumes.map((vol, i) => (
                                                 <div
