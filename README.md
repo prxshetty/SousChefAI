@@ -1,140 +1,288 @@
 # SousChef AI 👨‍🍳
 
-A RAG-enabled voice cooking assistant built with LiveKit. Ask cooking questions, get recipe advice, and have a natural conversation about food.
+A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs, ask questions, get recipe advice, and have a natural conversation about food — all through voice!
 
-## Architecture
+🌐 **[Live Demo](https://main.d2iyik5u6ri7ha.amplifyapp.com/)**
+
+---
+
+## 📖 Design Document
+
+### System Architecture
 
 ```
-┌─────────────────┐     WebSocket      ┌─────────────────┐
-│   React/Next.js │◄──────────────────►│  LiveKit Cloud  │
-│   Frontend      │                    │                 │
-└─────────────────┘                    └────────┬────────┘
-                                                │
-                                       Room Connection
-                                                │
-                                       ┌────────▼────────┐
-                                       │  Python Agent   │
-                                       │  (SousChef)     │
-                                       ├─────────────────┤
-                                       │  STT → LLM → TTS│
-                                       │  + RAG (LlamaIndex)
-                                       └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Client Browser                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                     Next.js Frontend (AWS Amplify)                   │   │
+│  │  - Voice selection (male/female)                                     │   │
+│  │  - PDF upload for RAG                                                │   │
+│  │  - Real-time transcript display                                      │   │
+│  │  - WebRTC audio streaming                                            │   │
+│  └──────────────────────────────────┬──────────────────────────────────┘   │
+└─────────────────────────────────────┼───────────────────────────────────────┘
+                                      │ WebSocket + WebRTC
+                                      ▼
+                         ┌────────────────────────┐
+                         │    LiveKit Cloud       │
+                         │  (Room Management)     │
+                         │  - Audio routing       │
+                         │  - Participant mgmt    │
+                         └───────────┬────────────┘
+                                     │ Worker Connection
+                                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       Python Agent (AWS EC2 / Local)                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                      LiveKit Agents Framework                        │   │
+│  │                                                                      │   │
+│  │   ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐         │   │
+│  │   │   VAD   │ -> │   STT   │ -> │   LLM   │ -> │   TTS   │         │   │
+│  │   │ Silero  │    │Assembly │    │  GPT-5  │    │Cartesia │         │   │
+│  │   └─────────┘    │   AI    │    │  mini   │    │         │         │   │
+│  │                  └─────────┘    └────┬────┘    └─────────┘         │   │
+│  │                                      │                              │   │
+│  │                              ┌───────▼───────┐                      │   │
+│  │                              │   RAG Query   │                      │   │
+│  │                              │  (LlamaIndex) │                      │   │
+│  │                              └───────┬───────┘                      │   │
+│  │                                      │                              │   │
+│  │                              ┌───────▼───────┐                      │   │
+│  │                              │   Pinecone    │                      │   │
+│  │                              │ (Vector Store)│                      │   │
+│  └──────────────────────────────┴───────────────┴──────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Features
+### End-to-End Flow
 
-- **Voice Conversation**: Real-time speech-to-text and text-to-speech
-- **PDF Upload**: Upload cooking PDFs directly through the UI
-- **RAG Integration**: Answers questions from uploaded cooking PDFs
-- **Live Transcript**: See the conversation as it happens
-- **Tool Calls**: Search recipes by ingredients
+1. **User Opens App** → Frontend loads on AWS Amplify
+2. **Voice Selection** → User picks male or female voice
+3. **Room Creation** → Frontend calls `/api/token` which creates a LiveKit room with voice metadata
+4. **Agent Joins** → Python agent (on EC2) receives job from LiveKit Cloud and joins the room
+5. **Voice Capture** → Browser captures microphone audio via WebRTC
+6. **VAD (Voice Activity Detection)** → Silero detects when user is speaking
+7. **STT (Speech-to-Text)** → AssemblyAI transcribes audio to text
+8. **RAG Query** → If cooking-related, query Pinecone for relevant cookbook context
+9. **LLM Processing** → GPT-5-mini generates response (with RAG context if available)
+10. **TTS (Text-to-Speech)** → Cartesia converts response to natural speech
+11. **Audio Playback** → Audio streams back to browser via WebRTC
 
-## Tech Stack
+### RAG Integration
 
-| Component | Technology |
-|-----------|------------|
-| Voice Agent | LiveKit Agents (Python) |
-| STT | AssemblyAI |
-| LLM | OpenAI GPT-4.1-mini |
-| TTS | Cartesia |
-| RAG | LlamaIndex |
-| Frontend | Next.js + React |
-| Real-time | LiveKit Cloud |
+The RAG (Retrieval-Augmented Generation) pipeline allows users to upload their own cooking PDFs:
 
-## Quick Start
+```
+PDF Upload → Chunking → Embedding → Pinecone → Query → Context Injection → LLM
+```
+
+**Implementation:**
+
+1. **Document Upload**: User uploads PDF via frontend → saved to `/tmp/` on server
+2. **Ingestion (LlamaIndex)**:
+   - PDF parsed with `SimpleDirectoryReader`
+   - Text chunked using `SentenceSplitter` (chunk_size=512, overlap=50)
+   - Chunks embedded using OpenAI's `text-embedding-3-small`
+3. **Vector Storage (Pinecone)**:
+   - Embeddings stored in Pinecone serverless index
+   - Namespace: `souschef` for isolation
+4. **Query Flow**:
+   - User asks cooking question
+   - Keywords detected (recipe, cook, ingredient, etc.)
+   - Query embedded and searched in Pinecone (top_k=3)
+   - Retrieved context injected into LLM conversation
+5. **RPC Integration**:
+   - Frontend calls `reload_cookbook` RPC after upload
+   - Agent re-indexes in background thread (non-blocking)
+   - Agent verbally confirms when indexing completes
+
+### Tools & Frameworks
+
+| Category | Technology | Purpose |
+|----------|------------|---------|
+| **Voice Agent** | LiveKit Agents SDK | Real-time voice infrastructure |
+| **VAD** | Silero VAD | Detect speech activity |
+| **STT** | AssemblyAI Universal | Speech-to-text transcription |
+| **LLM** | OpenAI GPT-5-mini | Conversational AI |
+| **TTS** | Cartesia Sonic 3 | Natural text-to-speech |
+| **Turn Detection** | LiveKit Multilingual Model | Know when user stops talking |
+| **RAG Framework** | LlamaIndex | Document ingestion and querying |
+| **Vector Database** | Pinecone (Serverless) | Semantic search |
+| **Embeddings** | OpenAI text-embedding-3-small | Text vectorization |
+| **Frontend** | Next.js 14 + React 18 | Web application |
+| **Styling** | Tailwind CSS + Framer Motion | UI and animations |
+| **Frontend Hosting** | AWS Amplify | Serverless Next.js hosting |
+| **Agent Hosting** | AWS EC2 (t2.micro) | Python agent runtime |
+| **Real-time Infra** | LiveKit Cloud | WebRTC room management |
+
+---
+
+## 🚀 Setup Instructions
 
 ### Prerequisites
 
-- Python 3.11+ with `uv` package manager
-- Node.js 18+ with `pnpm`
-- LiveKit Cloud account ([cloud.livekit.io](https://cloud.livekit.io))
-- OpenAI API key ([platform.openai.com](https://platform.openai.com))
+- Python 3.11+ with [`uv`](https://github.com/astral-sh/uv) package manager
+- Node.js 18+ with `npm`
+- [LiveKit Cloud](https://cloud.livekit.io) account
+- [OpenAI API key](https://platform.openai.com)
+- [Pinecone API key](https://www.pinecone.io/) (free tier works)
 
-### 1. Setup Environment
+### Option 1: Run Locally
 
-Copy the example environment files and add your API keys:
-
-```bash
-# Agent environment
-cp agent/.env.example agent/.env.local
-# Edit agent/.env.local with your keys
-
-# Frontend environment
-cp frontend/.env.example frontend/.env.local
-# Edit frontend/.env.local with your keys
-```
-
-You'll need:
-- **LiveKit credentials** from [cloud.livekit.io](https://cloud.livekit.io)
-- **OpenAI API key** from [platform.openai.com](https://platform.openai.com)
-
-### 2. Add a Cooking PDF (Optional)
-
-Place any cooking PDF in `agent/data/` for RAG capabilities:
+#### 1. Clone the Repository
 
 ```bash
-cp your-cookbook.pdf agent/data/
+git clone https://github.com/prxshetty/SousChefAI.git
+cd SousChefAI
 ```
 
-### 3. Start the Agent
+#### 2. Setup Agent
 
 ```bash
 cd agent
+
+# Copy environment template
+cp .env.example .env.local
+
+# Edit .env.local with your API keys:
+# - LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET
+# - OPENAI_API_KEY
+# - PINECONE_API_KEY
+
+# Install dependencies and run
 uv sync
 uv run python main.py dev
 ```
 
-### 4. Start the Frontend
+#### 3. Setup Frontend
 
 ```bash
 cd frontend
-pnpm install
-pnpm dev
+
+# Copy environment template
+cp .env.example .env.local
+
+# Edit .env.local with same LiveKit credentials
+
+# Install and run
+npm install
+npm run dev
 ```
 
-### 5. Use the App
+#### 4. Use the App
 
-Open [http://localhost:3000](http://localhost:3000), click "Start Call", and talk to SousChef!
+Open [http://localhost:3000](http://localhost:3000), select a voice, and start talking!
+
+### Option 2: Deploy to AWS (Production)
+
+#### Frontend: AWS Amplify
+
+1. Connect your GitHub repo to AWS Amplify
+2. Set app root to `frontend`
+3. Add environment variables:
+   - `LIVEKIT_API_KEY`
+   - `LIVEKIT_API_SECRET`
+   - `LIVEKIT_URL`
+   - `NEXT_PUBLIC_LIVEKIT_URL`
+4. Deploy
+
+#### Agent: AWS EC2
+
+1. Launch t2.micro (Amazon Linux 2023)
+2. SSH in and setup:
+
+```bash
+# Install dependencies
+sudo yum update -y
+sudo yum install python3.11 git -y
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+
+# Add swap (needed for 1GB RAM instances)
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+# Clone and setup
+git clone https://github.com/prxshetty/SousChefAI.git
+cd SousChefAI/agent
+nano .env.local  # Add your API keys
+uv sync
+uv run python main.py download-files
+
+# Run in background
+nohup uv run python main.py start > agent.log 2>&1 &
+```
+
+---
 
 ## Project Structure
 
 ```
 SousChef AI/
-├── agent/                 # Python voice agent
-│   ├── main.py           # Agent entry point
-│   ├── rag.py            # LlamaIndex RAG
-│   ├── data/             # PDF documents
-│   └── .env.local        # Agent credentials
+├── agent/                     # Python voice agent
+│   ├── main.py               # Agent entry point, session handling
+│   ├── rag.py                # LlamaIndex + Pinecone RAG logic
+│   ├── data/                 # Uploaded PDFs (gitignored)
+│   ├── .env.example          # Environment template
+│   └── pyproject.toml        # Python dependencies
 │
-├── frontend/             # Next.js frontend
+├── frontend/                  # Next.js frontend
 │   ├── app/
-│   │   ├── page.tsx      # Voice interface
-│   │   └── api/token/    # Token generation
-│   └── .env.local        # Frontend credentials
+│   │   ├── page.tsx          # Main voice interface
+│   │   ├── api/token/        # LiveKit token generation
+│   │   └── api/upload/       # PDF upload handler
+│   ├── components/ui/hero/   # Voice UI components
+│   ├── next.config.js        # Next.js config (env vars)
+│   └── .env.example          # Environment template
 │
-└── README.md
+└── README.md                  # This file
 ```
 
-## RAG Integration
+---
 
-The agent uses LlamaIndex for RAG:
+## Design Decisions & Assumptions
 
-1. **Ingestion**: PDFs in `agent/data/` are chunked and embedded
-2. **Storage**: Vectors are persisted to `agent/storage/`
-3. **Query**: User questions trigger semantic search
-4. **Context**: Retrieved chunks are injected into the conversation
+### Trade-offs & Limitations
 
-## Design Decisions
+| Decision | Trade-off | Reasoning |
+|----------|-----------|-----------|
+| **STT-LLM-TTS Pipeline** vs OpenAI Realtime API | Higher latency (~1-2s) but more flexibility | Can swap any component, use custom RAG, better control |
+| **t2.micro with Swap** vs larger instance | Slower under load, but free tier eligible | Demo-appropriate; upgrade to t2.small for production |
+| **Pinecone Serverless** vs self-hosted | Vendor dependency but zero ops | Free tier sufficient; managed scaling |
+| **Per-session RAG clearing** | User must re-upload each session | Prevents data leakage between users; simplifies auth |
+| **Multiple PDFs per session** | All uploads accumulated and re-indexed together | Users can query across multiple cookbooks within a session |
 
-- **STT-LLM-TTS Pipeline**: Chose over realtime API for flexibility
-- **LlamaIndex**: Proven RAG framework with simple PDF ingestion
-- **LiveKit Cloud**: Managed infrastructure, easy setup
-- **AssemblyAI + Cartesia**: High-quality voice with low latency
+### Hosting Assumptions
 
-## Troubleshooting
+- **Frontend (AWS Amplify)**: Serverless Next.js hosting with automatic HTTPS, CI/CD from GitHub
+- **Agent (AWS EC2)**: Always-on instance required for WebSocket connections; t2.micro with 2GB swap sufficient for demo load
+- **LiveKit Cloud**: Managed WebRTC infrastructure; free tier for development
+- **Pinecone**: Serverless vector DB; free tier provides 100K vectors
 
-| Issue | Solution |
-|-------|----------|
-| Agent won't start | Check `OPENAI_API_KEY` in `.env.local` |
-| No transcription | Ensure microphone permissions |
-| RAG not working | Add PDF to `agent/data/` and restart |
+### RAG Assumptions
+
+| Aspect | Choice | Rationale |
+|--------|--------|-----------|
+| **Vector Database** | Pinecone Serverless | Simple API, generous free tier, no infra management |
+| **Embedding Model** | OpenAI text-embedding-3-small | Cost-effective ($0.02/1M tokens), good quality |
+| **Chunk Size** | 512 tokens | Balances context preservation with retrieval precision |
+| **Chunk Overlap** | 50 tokens | Prevents losing context at chunk boundaries |
+| **Top-K Results** | 3 | Enough context without overwhelming LLM |
+| **Retrieval Trigger** | Keyword detection | Simple heuristic; could upgrade to semantic intent detection |
+
+### LiveKit Agent Design
+
+- **Agent Registration**: Agent registers with LiveKit Cloud on startup; dispatched when room is created
+- **Voice Metadata**: Room name encodes voice preference (`souschef-male-*` or `souschef-female-*`)
+- **RPC Methods**: Frontend can call agent functions (`reload_cookbook`, `clear_cookbook`) via LiveKit RPC
+- **Session Isolation**: Each user session gets its own room; cookbook cleared on disconnect
+- **Non-blocking Indexing**: PDF indexing runs in background thread so agent remains responsive
+
+---
+
+
+## License
+
+MIT License - feel free to use and modify!
