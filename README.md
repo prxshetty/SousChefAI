@@ -38,8 +38,8 @@ A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs, a
 │  │                                                                      │   │
 │  │   ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐         │   │
 │  │   │   VAD   │ -> │   STT   │ -> │   LLM   │ -> │   TTS   │         │   │
-│  │   │ Silero  │    │Assembly │    │  GPT-5  │    │Cartesia │         │   │
-│  │   └─────────┘    │   AI    │    │  mini   │    │         │         │   │
+│  │   │ Silero  │    │ Speech- │    │  GPT-5  │    │Deepgram │         │   │
+│  │   └─────────┘    │  matics │    │  mini   │    │ Aura 2  │         │   │
 │  │                  └─────────┘    └────┬────┘    └─────────┘         │   │
 │  │                                      │                              │   │
 │  │                              ┌───────▼───────┐                      │   │
@@ -62,10 +62,10 @@ A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs, a
 4. **Agent Joins** → Python agent (on EC2) receives job from LiveKit Cloud and joins the room
 5. **Voice Capture** → Browser captures microphone audio via WebRTC
 6. **VAD (Voice Activity Detection)** → Silero detects when user is speaking
-7. **STT (Speech-to-Text)** → AssemblyAI transcribes audio to text
-8. **RAG Query** → If cooking-related, query Pinecone for relevant cookbook context
-9. **LLM Processing** → GPT-5-mini generates response (with RAG context if available)
-10. **TTS (Text-to-Speech)** → Cartesia converts response to natural speech
+7. **STT (Speech-to-Text)** → Speechmatics transcribes audio to text
+8. **RAG Query** → If relevant, LLM uses `search_cookbook` tool to query Pinecone
+9. **LLM Processing** → GPT-5-mini generates response, may call tools (timer, shopping list)
+10. **TTS (Text-to-Speech)** → Deepgram Aura 2 converts response to natural speech
 11. **Audio Playback** → Audio streams back to browser via WebRTC
 
 ### RAG Integration
@@ -96,15 +96,35 @@ PDF Upload → Chunking → Embedding → Pinecone → Query → Context Injecti
    - Agent re-indexes in background thread (non-blocking)
    - Agent verbally confirms when indexing completes
 
+### Agent Tools
+
+The agent has built-in function tools that the LLM intelligently decides when to use:
+
+| Tool | Usage | UI Feedback |
+|------|-------|-------------|
+| **search_cookbook** | Queries uploaded PDFs for recipes/info | Context woven into response |
+| **set_timer** | "Set a 10 minute timer for pasta" | Circular timer display (bottom-right) |
+| **clear_timers** | "Cancel the timer" | Removes all active timers |
+| **add_to_shopping_list** | "Add eggs, butter, milk to my list" | Floating shopping list (bottom-left) |
+| **remove_from_shopping_list** | "I already have eggs" | Item removed from list |
+| **clear_shopping_list** | "Clear my shopping list" | List emptied |
+| **reload_cookbook** | Triggered after PDF upload | Agent confirms verbally |
+
+**Tool Architecture:**
+- Tools are `@function_tool()` decorated methods on the Agent class
+- LLM reads docstrings to understand when to call each tool
+- Data sent to frontend via LiveKit data channel for real-time UI updates
+- Shopping list includes AI-inferred categories and emojis (🥚 Eggs → Dairy)
+
 ### Tools & Frameworks
 
 | Category | Technology | Purpose |
 |----------|------------|---------|
 | **Voice Agent** | LiveKit Agents SDK | Real-time voice infrastructure |
 | **VAD** | Silero VAD | Detect speech activity |
-| **STT** | AssemblyAI Universal | Speech-to-text transcription |
+| **STT** | Speechmatics | Speech-to-text transcription |
 | **LLM** | OpenAI GPT-5-mini | Conversational AI |
-| **TTS** | Cartesia Sonic 3 | Natural text-to-speech |
+| **TTS** | Deepgram Aura 2 | Natural text-to-speech |
 | **Turn Detection** | LiveKit Multilingual Model | Know when user stops talking |
 | **RAG Framework** | LlamaIndex | Document ingestion and querying |
 | **Vector Database** | Pinecone (Serverless) | Semantic search |
