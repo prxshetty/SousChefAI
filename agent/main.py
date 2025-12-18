@@ -1,13 +1,15 @@
 import json
+import os
+from pathlib import Path
 from dotenv import load_dotenv
 from livekit import agents, rtc
 from livekit.agents import AgentServer, AgentSession, Agent, ChatContext, ChatMessage, RunContext, function_tool, room_io
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from rag import get_rag, reload_rag
 from livekit.plugins import openai
-import os
-load_dotenv()
+env_file = Path(__file__).parent / ".env.local"
+load_dotenv(env_file)
+from rag import get_rag, reload_rag, clear_rag
 
 VOICE_OPTIONS = {
     "male": "a167e0f3-df7e-4d52-a9c3-f949145efdab",
@@ -203,18 +205,51 @@ async def souschef_session(ctx: agents.JobContext):
     @ctx.room.local_participant.register_rpc_method("reload_cookbook")
     async def handle_reload_cookbook(data: rtc.RpcInvocationData) -> str:
         """Handle RPC call from frontend to reload cookbook."""
+        import asyncio
         print("Received reload_cookbook RPC call")
-        success, message = reload_rag()
+        
+        await session.generate_reply(
+            instructions="The user just uploaded a cookbook PDF. Acknowledge it immediately like 'Oh nice, I see you've uploaded a recipe! I'll go through it now - feel free to ask me anything in the meantime!' Keep it brief and friendly."
+        )
+        
+        # Running the blocking indexing in a thread to not block the event loop so ai can still respond. ( Realtime wohoo)
+        success, message = await asyncio.to_thread(reload_rag)
         
         if success:
             await session.generate_reply(
-                instructions="You just received a new cookbook or recipe PDF from the user. Acknowledge it warmly and naturally, like 'Oh nice, I see you've shared a recipe with me! Let me take a look... Perfect, I've got it loaded up. What would you like to know about it?' Keep it brief and conversational."
+                instructions="You just finished processing the cookbook. Naturally interrupt to let the user know, like 'Alright, I've got your recipe loaded up now! What would you like to know about it?' Keep it brief and conversational."
             )
         else:
             await session.generate_reply(
-                instructions="There was an issue loading the cookbook. Apologize briefly and suggest they try again, staying friendly and helpful."
+                instructions="There was an issue loading the cookbook. Apologize briefly and suggest they try again."
             )
         
+        return message
+    
+    @ctx.room.local_participant.register_rpc_method("clear_cookbook")
+    async def handle_clear_cookbook(data: rtc.RpcInvocationData) -> str:
+        """Handle RPC call from frontend to clear cookbook."""
+        import asyncio
+        print("Received clear_cookbook RPC call")
+        success, message = await asyncio.to_thread(clear_rag)
+        
+        if success:
+            await session.generate_reply(
+                instructions="The user just cleared all the cookbook data. Acknowledge it briefly like 'Sure thing! I've cleared out all the recipes from my memory. Feel free to upload a new cookbook whenever you're ready!'"
+            )
+        else:
+            await session.generate_reply(
+                instructions="There was an issue clearing the cookbook. Apologize briefly and explain what happened."
+            )
+        
+        return message
+    
+    @ctx.room.local_participant.register_rpc_method("clear_cookbook_silent")
+    async def handle_clear_cookbook_silent(data: rtc.RpcInvocationData) -> str:
+        """Silent clear on disconnect - no voice response."""
+        import asyncio
+        print("Received clear_cookbook_silent RPC call (session ending)")
+        success, message = await asyncio.to_thread(clear_rag)
         return message
     
     await session.generate_reply(

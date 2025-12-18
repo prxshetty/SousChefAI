@@ -1,57 +1,97 @@
-"""
-RAG module for SousChef AI using LlamaIndex.
-Provides semantic search over cooking PDFs.
-"""
-
 import os
 from pathlib import Path
 from typing import Optional
 
+from pinecone import Pinecone, ServerlessSpec
 from llama_index.core import (
     VectorStoreIndex,
     SimpleDirectoryReader,
     Settings,
     StorageContext,
-    load_index_from_storage,
 )
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAI
+from llama_index.vector_stores.pinecone import PineconeVectorStore
 
 Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
-# TODO: only a semantic retriever is used, query engine not used
 
 # Paths
 DATA_DIR = Path(__file__).parent / "data"
-STORAGE_DIR = Path(__file__).parent / "storage"
+
+# Pinecone config
+PINECONE_INDEX_NAME = "souschef-cookbook"
+PINECONE_DIMENSION = 1536  # text-embedding-3-small dimension
 
 
 class CookbookRAG:
-    """RAG system for querying cooking documents."""
-    
     def __init__(self):
         self.index: Optional[VectorStoreIndex] = None
+        self.pinecone_index = None
+        self._init_pinecone()
         self._load_or_create_index()
     
-    def _load_or_create_index(self) -> None:
-        """Load existing index or create new one from PDFs."""
-        if STORAGE_DIR.exists():
-            try:
-                storage_context = StorageContext.from_defaults(persist_dir=str(STORAGE_DIR))
-                self.index = load_index_from_storage(storage_context)
-                print("Loaded existing index from storage")
-                return
-            except Exception as e:
-                print(f"Could not load existing index: {e}")
-
-        if DATA_DIR.exists() and any(DATA_DIR.iterdir()):
-            self._create_index()
-        else:
-            print(f"No documents found in {DATA_DIR}. RAG will not be available.")
-            print("Please add PDF files to the data/ directory and restart.")
+    def _init_pinecone(self) -> None:
+        api_key = os.getenv("PINECONE_API_KEY")
+        if not api_key:
+            print("WARNING: PINECONE_API_KEY not set. RAG will not be available.")
+            return
+        
+        try:
+            pc = Pinecone(api_key=api_key)
+            
+            # Create index if it doesn't exist
+            existing_indexes = pc.list_indexes().names()
+            if PINECONE_INDEX_NAME not in existing_indexes:
+                print(f"Creating Pinecone index: {PINECONE_INDEX_NAME}")
+                pc.create_index(
+                    name=PINECONE_INDEX_NAME,
+                    dimension=PINECONE_DIMENSION,
+                    metric="cosine",
+                    spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+                )
+            
+            self.pinecone_index = pc.Index(PINECONE_INDEX_NAME)
+            print(f"Connected to Pinecone index: {PINECONE_INDEX_NAME}")
+        except Exception as e:
+            print(f"Failed to initialize Pinecone: {e}")
+            self.pinecone_index = None
     
-    def _create_index(self) -> None:
+    def _load_or_create_index(self) -> None:
+        """Load existing index from Pinecone or create new one from PDFs."""
+        if not self.pinecone_index:
+            print("Pinecone not available. RAG disabled.")
+            return
+        
+        try:
+            # Create vector store connected to Pinecone
+            vector_store = PineconeVectorStore(pinecone_index=self.pinecone_index)
+            
+            # Check if index has vectors
+            stats = self.pinecone_index.describe_index_stats()
+            if stats.total_vector_count > 0:
+                # Load existing index
+                self.index = VectorStoreIndex.from_vector_store(vector_store)
+                print(f"Loaded existing index with {stats.total_vector_count} vectors")
+            elif DATA_DIR.exists() and any(DATA_DIR.iterdir()):
+                # Create new index from documents
+                self._create_index(vector_store)
+            else:
+                print(f"No documents found in {DATA_DIR}. RAG will not be available.")
+                print("Please add PDF files to the data/ directory.")
+        except Exception as e:
+            print(f"Error loading/creating index: {e}")
+            self.index = None
+    
+    def _create_index(self, vector_store: Optional[PineconeVectorStore] = None) -> None:
         """Create a new index from PDF documents."""
+        if not self.pinecone_index:
+            print("Pinecone not available. Cannot create index.")
+            return
+            
         print(f"Creating index from documents in {DATA_DIR}...")
+        
+        if not DATA_DIR.exists() or not any(DATA_DIR.iterdir()):
+            print("No documents to index.")
+            return
         
         documents = SimpleDirectoryReader(
             input_dir=str(DATA_DIR),
@@ -65,11 +105,16 @@ class CookbookRAG:
         
         print(f"Loaded {len(documents)} document chunks")
         
-        self.index = VectorStoreIndex.from_documents(documents)
+        if vector_store is None:
+            vector_store = PineconeVectorStore(pinecone_index=self.pinecone_index)
         
-        STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-        self.index.storage_context.persist(persist_dir=str(STORAGE_DIR))
-        print(f"Index saved to {STORAGE_DIR}")
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
+        
+        self.index = VectorStoreIndex.from_documents(
+            documents,
+            storage_context=storage_context,
+        )
+        print(f"Index created and uploaded to Pinecone")
     
     def query(self, question: str, top_k: int = 3) -> str:
         """
@@ -101,6 +146,16 @@ class CookbookRAG:
         """Check if RAG is ready to use."""
         return self.index is not None
     
+    def get_vector_count(self) -> int:
+        """Get the number of vectors in the index."""
+        if not self.pinecone_index:
+            return 0
+        try:
+            stats = self.pinecone_index.describe_index_stats()
+            return stats.total_vector_count
+        except:
+            return 0
+    
     def reload_index(self) -> tuple[bool, str]:
         """
         Rebuild the index from documents in the data directory.
@@ -110,22 +165,44 @@ class CookbookRAG:
             Tuple of (success, message)
         """
         try:
+            if not self.pinecone_index:
+                return False, "Pinecone not available."
+            
             if not DATA_DIR.exists() or not any(DATA_DIR.iterdir()):
                 return False, "No documents found in the data directory."
-            
-            if STORAGE_DIR.exists():
-                import shutil
-                shutil.rmtree(STORAGE_DIR)
-            
+             
+            print("Clearing existing vectors...")
+            self.pinecone_index.delete(delete_all=True)
             self._create_index()
             
             if self.index is not None:
                 doc_count = len(list(DATA_DIR.glob("**/*.pdf")))
-                return True, f"Successfully indexed {doc_count} PDF(s). I'm ready to answer questions!"
+                stats = self.pinecone_index.describe_index_stats()
+                return True, f"Successfully indexed {doc_count} PDF(s) with {stats.total_vector_count} vectors. I'm ready to answer questions!"
             else:
                 return False, "Failed to create index."
         except Exception as e:
             return False, f"Error reloading index: {str(e)}"
+    
+    def clear_index(self) -> tuple[bool, str]:
+        """
+        Clear all vectors from the Pinecone index.
+        
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            if not self.pinecone_index:
+                return False, "Pinecone not available."
+            
+            print("Clearing all vectors from index...")
+            self.pinecone_index.delete(delete_all=True)
+            self.index = None
+            
+            return True, "Cookbook cleared! I've forgotten everything from the uploaded recipes."
+        except Exception as e:
+            return False, f"Error clearing index: {str(e)}"
+
 
 _rag_instance: Optional[CookbookRAG] = None
 
@@ -144,3 +221,11 @@ def reload_rag() -> tuple[bool, str]:
         _rag_instance = CookbookRAG()
         return _rag_instance.is_available(), "RAG initialized."
     return _rag_instance.reload_index()
+
+
+def clear_rag() -> tuple[bool, str]:
+    """Clear the RAG index. Returns (success, message)."""
+    global _rag_instance
+    if _rag_instance is None:
+        return False, "No cookbook loaded."
+    return _rag_instance.clear_index()

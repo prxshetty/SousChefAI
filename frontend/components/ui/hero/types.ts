@@ -14,7 +14,10 @@ export interface HeroSectionProps {
 
 export interface VoiceActiveContentProps {
     onUpload: (file: File) => Promise<void>
+    onClear: () => Promise<void>
     isUploading: boolean
+    isProcessing: boolean
+    isClearing: boolean
     uploadSuccess: boolean
     fileCount: number
     onDisconnect: () => void

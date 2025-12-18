@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
-import { Plus, Check, Loader2, Mic, MicOff, MessageCircle } from "lucide-react"
+import { Plus, Check, Loader2, Mic, MicOff, MessageCircle, Trash2 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import {
     useVoiceAssistant,
@@ -17,7 +17,10 @@ import { ChatPanel } from "./chat-panel"
 
 export function VoiceActiveContent({
     onUpload,
+    onClear,
     isUploading,
+    isProcessing,
+    isClearing,
     uploadSuccess,
     fileCount,
     onDisconnect,
@@ -92,6 +95,7 @@ export function VoiceActiveContent({
     const currentTranscript = transcript[transcript.length - 1]
     const previousTranscript = transcript[transcript.length - 2]
 
+
     // Handle file selection
     const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]
@@ -109,7 +113,9 @@ export function VoiceActiveContent({
 
     // Determine status text
     const getStatusText = () => {
+        if (isClearing) return "Clearing cookbook..."
         if (isUploading) return "Uploading cookbook..."
+        if (isProcessing) return "Processing cookbook..."
         if (uploadSuccess) return "Cookbook ready!"
         if (isConnecting) return "Connecting..."
         if (!isConnected) return "Disconnected"
@@ -303,11 +309,11 @@ export function VoiceActiveContent({
                         {/* Upload Button - with glassmorphism */}
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={isUploading}
+                            disabled={isUploading || isClearing}
                             className={cn(
                                 "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/70 backdrop-blur-xl",
                                 "hover:border-foreground hover:bg-foreground hover:text-background",
-                                isUploading && "opacity-50 cursor-not-allowed"
+                                (isUploading || isClearing) && "opacity-50 cursor-not-allowed"
                             )}
                         >
                             {isUploading ? (
@@ -325,6 +331,26 @@ export function VoiceActiveContent({
                                 </div>
                             )}
                         </button>
+
+                        {/* Clear Button - only shows when files uploaded */}
+                        {fileCount > 0 && (
+                            <button
+                                onClick={onClear}
+                                disabled={isClearing || isUploading}
+                                className={cn(
+                                    "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/70 backdrop-blur-xl",
+                                    "hover:border-red-500 hover:bg-red-500/10 hover:text-red-500",
+                                    (isClearing || isUploading) && "opacity-50 cursor-not-allowed"
+                                )}
+                            >
+                                {isClearing ? (
+                                    <Loader2 className="size-5 animate-spin" />
+                                ) : (
+                                    <Trash2 className="size-5" />
+                                )}
+                            </button>
+                        )}
+
                         <input
                             type="file"
                             ref={fileInputRef}
