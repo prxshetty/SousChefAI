@@ -1,9 +1,32 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowDownLeft } from "lucide-react"
+import { ArrowDownLeft, Timer, ShoppingCart, TextSearch, CookingPot } from "lucide-react"
 import { motion } from "motion/react"
 import { VoiceSelectViewProps } from "./types"
+
+const features = [
+    {
+        icon: CookingPot,
+        title: "Recipes",
+        description: "Ask about any dish"
+    },
+    {
+        icon: Timer,
+        title: "Timers",
+        description: "Set cooking timers"
+    },
+    {
+        icon: ShoppingCart,
+        title: "Shopping",
+        description: "Build ingredient lists"
+    },
+    {
+        icon: TextSearch,
+        title: "PDFs",
+        description: "Upload cookbooks"
+    },
+]
 
 export function VoiceSelectView({ onVoiceSelect, onBack }: VoiceSelectViewProps) {
     const [isBackHovered, setIsBackHovered] = useState(false)
@@ -111,6 +134,36 @@ export function VoiceSelectView({ onVoiceSelect, onBack }: VoiceSelectViewProps)
                         style={{ color: isBackHovered && !isBackClicked ? "var(--background)" : "var(--foreground)" }}
                     />
                 </motion.div>
+            </motion.div>
+
+            {/* Feature hints - Below back button */}
+            <motion.div
+                className="flex items-center justify-center gap-8 mt-8"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+            >
+                {features.map((feature, index) => (
+                    <motion.div
+                        key={feature.title}
+                        className="flex flex-col items-center gap-2"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.6 + index * 0.1, duration: 0.3 }}
+                    >
+                        <div className="p-3 rounded-xl border border-border bg-background/50">
+                            <feature.icon className="size-5 text-muted-foreground" strokeWidth={1.5} />
+                        </div>
+                        <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-sm font-medium text-foreground">
+                                {feature.title}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground/60 max-w-[100px] text-center leading-tight">
+                                {feature.description}
+                            </span>
+                        </div>
+                    </motion.div>
+                ))}
             </motion.div>
         </motion.div>
     )
