@@ -13,10 +13,11 @@ import {
 import { ConnectionState, RoomEvent, TranscriptionSegment, Participant, DataPacket_Kind } from "livekit-client"
 
 import { cn } from "@/lib/utils"
-import { VoiceActiveContentProps, TranscriptEntry, Timer, ShoppingItem } from "./types"
+import { VoiceActiveContentProps, TranscriptEntry, Timer, ShoppingItem, RecipePlan } from "./types"
 import { ChatPanel } from "./chat-panel"
 import { TimerDisplay } from "./timer-display"
 import { ShoppingList } from "./shopping-list"
+import { CookingView } from "./cooking-view"
 
 export function VoiceActiveContent({
     onUpload,
@@ -36,6 +37,8 @@ export function VoiceActiveContent({
     const [isMuted, setIsMuted] = useState(false)
     const [timers, setTimers] = useState<Timer[]>([])
     const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([])
+    const [recipePlan, setRecipePlan] = useState<RecipePlan | null>(null)
+    const [cookingMode, setCookingMode] = useState(false)
     const [isHoveringDisconnect, setIsHoveringDisconnect] = useState(false)
     const room = useRoomContext()
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -83,6 +86,30 @@ export function VoiceActiveContent({
                         setShoppingList(data.items || [])
                     } else if (data.action === "clear") {
                         setShoppingList([])
+                    }
+                }
+
+                if (data.type === "recipe_plan") {
+                    console.log("Recipe plan received:", data.plan)
+                    setRecipePlan(data.plan)
+                    // We don't auto-start cooking mode; wait for "cooking_mode" event
+                }
+
+                if (data.type === "cooking_mode") {
+                    if (data.action === "start") {
+                        setCookingMode(true)
+                    } else if (data.action === "complete") {
+                        // Optional: show completion celebration, then maybe exit mode after delay?
+                        // For now just stay on last step or let user decide to leave.
+                    }
+                }
+
+                if (data.type === "step_update") {
+                    if (recipePlan) {
+                        setRecipePlan(prev => prev ? ({
+                            ...prev,
+                            current_step_index: data.step_index
+                        }) : null)
                     }
                 }
             } catch (e) {
@@ -229,13 +256,19 @@ export function VoiceActiveContent({
         }
     }
 
+    // Handlers for Cooking View (triggered manually via UI if needed, though mostly voice driven)
+    const handleNextStep = () => {
+        // In a real app, this might send an RPC to the agent to trigger the next step
+        // For now, relies on voice command or we implement RPC
+    }
+
     return (
         <>
             <RoomAudioRenderer />
 
             {/* Shopping List - Fixed bottom-left */}
             <AnimatePresence>
-                {shoppingList.length > 0 && (
+                {shoppingList.length > 0 && !cookingMode && (
                     <ShoppingList
                         items={shoppingList}
                         onRemoveItem={handleRemoveShoppingItem}
@@ -257,46 +290,60 @@ export function VoiceActiveContent({
                 showChatPanel ? "gap-8" : ""
             )}>
 
-                {/* Main Voice Content (60% when chat open, 100% when closed) - CENTERED */}
+                {/* Main Content Area */}
                 <motion.div
-                    className="flex flex-col items-center justify-center gap-8"
+                    className="flex flex-col items-center justify-center gap-8 relative"
                     layout
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                     style={{ width: showChatPanel ? "60%" : "100%" }}
                 >
+                    {cookingMode && recipePlan ? (
+                        <CookingView
+                            recipe={recipePlan}
+                            onNext={() => { }} // No-op for now, rely on voice or add RPC
+                            onPrev={() => { }}
+                            onComplete={() => setCookingMode(false)}
+                        />
+                    ) : (
+                        // Standard Voice View
+                        <>
+                            {/* Previous transcript (smaller, faded) */}
+                            <motion.div
+                                className="flex flex-col items-center gap-2 min-h-[60px]"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                {previousTranscript && (
+                                    <>
+                                        <span className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground">
+                                            {previousTranscript.speaker === "user" ? "You" : "SousChef"}
+                                        </span>
+                                        <p className="text-sm text-muted-foreground/70 max-w-md text-center truncate">
+                                            {previousTranscript.text}
+                                        </p>
+                                    </>
+                                )}
+                            </motion.div>
 
-                    {/* Previous transcript (smaller, faded) */}
+                            {/* Current transcript (larger, prominent) */}
+                            <motion.h3
+                                className="text-2xl sm:text-3xl font-light tracking-tight text-foreground text-center max-w-lg min-h-[80px] flex items-center justify-center"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                            >
+                                {currentTranscript?.text || "Start speaking..."}
+                            </motion.h3>
+                        </>
+                    )}
+
+                    {/* Voice Control Bar - Repositioned when in Cooking Mode */}
                     <motion.div
-                        className="flex flex-col items-center gap-2 min-h-[60px]"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                    >
-                        {previousTranscript && (
-                            <>
-                                <span className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground">
-                                    {previousTranscript.speaker === "user" ? "You" : "SousChef"}
-                                </span>
-                                <p className="text-sm text-muted-foreground/70 max-w-md text-center truncate">
-                                    {previousTranscript.text}
-                                </p>
-                            </>
+                        className={cn(
+                            "flex items-center gap-4 transition-all duration-500",
+                            cookingMode ? "absolute bottom-8 left-1/2 -translate-x-1/2 z-50 bg-white/90 p-2 px-6 rounded-full shadow-xl border border-white/50 backdrop-blur-md" : ""
                         )}
-                    </motion.div>
-
-                    {/* Current transcript (larger, prominent) */}
-                    <motion.h3
-                        className="text-2xl sm:text-3xl font-light tracking-tight text-foreground text-center max-w-lg min-h-[80px] flex items-center justify-center"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        {currentTranscript?.text || "Start speaking..."}
-                    </motion.h3>
-
-                    {/* Voice Control + Chat + Upload Buttons - with glassmorphism */}
-                    <motion.div
-                        className="flex items-center gap-4"
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.3 }}
@@ -453,15 +500,17 @@ export function VoiceActiveContent({
                         />
                     </motion.div>
 
-                    {/* Status Text */}
-                    <motion.span
-                        className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                    >
-                        {getStatusText()}
-                    </motion.span>
+                    {/* Status Text - Hide in cooking mode */}
+                    {!cookingMode && (
+                        <motion.span
+                            className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.4 }}
+                        >
+                            {getStatusText()}
+                        </motion.span>
+                    )}
                 </motion.div>
 
                 {/* Chat History Panel (40% width when open) */}
