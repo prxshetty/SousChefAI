@@ -208,12 +208,7 @@ export function VoiceActiveContent({
         }
     }
 
-    // Format duration
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60)
-        const secs = seconds % 60
-        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-    }
+
 
     // Determine status text
     const getStatusText = () => {
@@ -258,12 +253,13 @@ export function VoiceActiveContent({
 
     // Handlers for Cooking View (triggered manually via UI if needed, though mostly voice driven)
     const handleNextStep = () => {
+
         // In a real app, this might send an RPC to the agent to trigger the next step
         // For now, relies on voice command or we implement RPC
     }
 
     return (
-        <>
+        <div className="relative w-full h-full flex flex-col items-center justify-center">
             <RoomAudioRenderer />
 
             {/* Shopping List - Fixed bottom-left */}
@@ -285,244 +281,221 @@ export function VoiceActiveContent({
                 )}
             </AnimatePresence>
 
-            <div className={cn(
-                "flex w-full h-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                showChatPanel ? "gap-8" : ""
-            )}>
-
-                {/* Main Content Area */}
-                <motion.div
-                    className="flex flex-col items-center justify-center gap-8 relative"
-                    layout
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    style={{ width: showChatPanel ? "60%" : "100%" }}
-                >
-                    {cookingMode && recipePlan ? (
-                        <CookingView
-                            recipe={recipePlan}
-                            onNext={() => { }} // No-op for now, rely on voice or add RPC
-                            onPrev={() => { }}
-                            onComplete={() => setCookingMode(false)}
-                        />
-                    ) : (
-                        // Standard Voice View
-                        <>
-                            {/* Previous transcript (smaller, faded) */}
-                            <motion.div
-                                className="flex flex-col items-center gap-2 min-h-[60px]"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                            >
-                                {previousTranscript && (
-                                    <>
-                                        <span className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground">
-                                            {previousTranscript.speaker === "user" ? "You" : "SousChef"}
-                                        </span>
-                                        <p className="text-sm text-muted-foreground/70 max-w-md text-center truncate">
-                                            {previousTranscript.text}
-                                        </p>
-                                    </>
-                                )}
-                            </motion.div>
-
-                            {/* Current transcript (larger, prominent) */}
-                            <motion.h3
-                                className="text-2xl sm:text-3xl font-light tracking-tight text-foreground text-center max-w-lg min-h-[80px] flex items-center justify-center"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                            >
-                                {currentTranscript?.text || "Start speaking..."}
-                            </motion.h3>
-                        </>
-                    )}
-
-                    {/* Voice Control Bar - Repositioned when in Cooking Mode */}
+            {/* Persistent Transcript Display - Always at top */}
+            <AnimatePresence mode="wait">
+                {currentTranscript && (
                     <motion.div
-                        className={cn(
-                            "flex items-center gap-4 transition-all duration-500",
-                            cookingMode ? "absolute bottom-8 left-1/2 -translate-x-1/2 z-50 bg-white/90 p-2 px-6 rounded-full shadow-xl border border-white/50 backdrop-blur-md" : ""
-                        )}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.3 }}
+                        key={currentTranscript.id}
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute top-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-6 text-center pointer-events-none"
                     >
-                        {/* LiveKit-aware Voice Control (click to disconnect) */}
-                        <motion.button
-                            onClick={handleMicClick}
-                            onMouseEnter={() => setIsHoveringDisconnect(true)}
-                            onMouseLeave={() => setIsHoveringDisconnect(false)}
-                            className="flex p-3 border items-center justify-center rounded-full cursor-pointer hover:border-red-500 hover:bg-red-500/10 group transition-all bg-background/70 backdrop-blur-xl"
-                            layout
-                            transition={{ layout: { duration: 0.4 } }}
-                        >
-                            <div className="h-6 w-6 items-center justify-center flex">
-                                {isActive ? (
-                                    <motion.div
-                                        className="w-4 h-4 bg-primary rounded group-hover:bg-red-500 transition-colors"
-                                        animate={{ rotate: isHoveringDisconnect ? 0 : [0, 180, 360] }}
-                                        transition={{
-                                            duration: isHoveringDisconnect ? 0.3 : 2,
-                                            repeat: isHoveringDisconnect ? 0 : Infinity,
-                                            ease: "easeInOut",
-                                        }}
-                                    />
-                                ) : agentState === "thinking" ? (
-                                    <Loader2 className="size-5 animate-spin group-hover:text-red-500 transition-colors" />
-                                ) : (
-                                    <div className="w-4 h-4 bg-primary group-hover:bg-red-500 rounded-full transition-colors" />
-                                )}
-                            </div>
-                            <AnimatePresence mode="wait">
-                                {isConnected && (
-                                    <motion.div
-                                        initial={{ opacity: 0, width: 0, marginLeft: 0 }}
-                                        animate={{ opacity: 1, width: "auto", marginLeft: 8 }}
-                                        exit={{ opacity: 0, width: 0, marginLeft: 0 }}
-                                        transition={{ duration: 0.4 }}
-                                        className="overflow-hidden flex gap-2 items-center justify-center"
-                                    >
-                                        {/* Frequency Animation - synced with agent state */}
-                                        <div className="flex gap-0.5 items-center justify-center">
-                                            {audioVolumes.map((vol, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="w-0.5 bg-primary group-hover:bg-red-500 rounded-full transition-colors"
-                                                    style={{
-                                                        height: `${Math.max(2, 2 + vol * 14)}px`,
-                                                        transition: 'height 0.05s ease-out',
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                        {/* Timer */}
-                                        <div className="text-xs text-muted-foreground group-hover:text-red-500 w-10 text-center transition-colors">
-                                            {formatTime(callDuration)}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </motion.button>
-
-                        {/* Mute Toggle Button */}
-                        <button
-                            onClick={async () => {
-                                if (room) {
-                                    const localParticipant = room.localParticipant
-                                    const audioTracks = Array.from(localParticipant.audioTrackPublications.values())
-                                    for (const pub of audioTracks) {
-                                        if (pub.track) {
-                                            if (isMuted) {
-                                                await pub.track.unmute()
-                                            } else {
-                                                await pub.track.mute()
-                                            }
-                                        }
-                                    }
-                                    setIsMuted(!isMuted)
-                                }
-                            }}
-                            className={cn(
-                                "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/70 backdrop-blur-xl",
-                                isMuted
-                                    ? "border-orange-500 bg-orange-500/10 text-orange-500"
-                                    : "hover:border-foreground hover:bg-foreground hover:text-background"
-                            )}
-                        >
-                            {isMuted ? <MicOff className="size-5" /> : <Mic className="size-5" />}
-                        </button>
-
-                        {/* Chat Toggle Button - with glassmorphism */}
-                        <button
-                            onClick={() => setShowChatPanel(!showChatPanel)}
-                            className={cn(
-                                "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/70 backdrop-blur-xl",
-                                showChatPanel
-                                    ? "border-foreground bg-foreground text-background"
-                                    : "hover:border-foreground hover:bg-foreground hover:text-background"
-                            )}
-                        >
-                            <MessageCircle className="size-5" />
-                        </button>
-
-                        {/* Upload Button - with glassmorphism */}
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isUploading || isClearing}
-                            className={cn(
-                                "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/70 backdrop-blur-xl",
-                                "hover:border-foreground hover:bg-foreground hover:text-background",
-                                (isUploading || isClearing) && "opacity-50 cursor-not-allowed"
-                            )}
-                        >
-                            {isUploading ? (
-                                <Loader2 className="size-5 animate-spin" />
-                            ) : uploadSuccess ? (
-                                <Check className="size-5" />
-                            ) : (
-                                <div className="relative">
-                                    <Plus className="size-5" />
-                                    {fileCount > 0 && (
-                                        <span className="absolute -top-2 -right-2 text-[10px] bg-foreground text-background rounded-full size-4 flex items-center justify-center">
-                                            {fileCount}
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-                        </button>
-
-                        {/* Clear Button - only shows when files uploaded */}
-                        {fileCount > 0 && (
-                            <button
-                                onClick={onClear}
-                                disabled={isClearing || isUploading}
-                                className={cn(
-                                    "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/70 backdrop-blur-xl",
-                                    "hover:border-red-500 hover:bg-red-500/10 hover:text-red-500",
-                                    (isClearing || isUploading) && "opacity-50 cursor-not-allowed"
-                                )}
-                            >
-                                {isClearing ? (
-                                    <Loader2 className="size-5 animate-spin" />
-                                ) : (
-                                    <Trash2 className="size-5" />
-                                )}
-                            </button>
-                        )}
-
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileSelect}
-                            accept=".pdf"
-                            className="hidden"
-                        />
+                        <p className={cn(
+                            "text-2xl font-light leading-relaxed tracking-wide drop-shadow-sm",
+                            cookingMode ? "text-foreground/90 bg-background/80 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-border/50" : "text-foreground"
+                        )}>
+                            {currentTranscript.text}
+                        </p>
                     </motion.div>
+                )}
+            </AnimatePresence>
 
-                    {/* Status Text - Hide in cooking mode */}
-                    {!cookingMode && (
-                        <motion.span
-                            className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.4 }}
-                        >
-                            {getStatusText()}
-                        </motion.span>
-                    )}
-                </motion.div>
-
-                {/* Chat History Panel (40% width when open) */}
-                <AnimatePresence>
-                    {showChatPanel && (
-                        <ChatPanel
-                            transcript={transcript}
-                            onClose={() => setShowChatPanel(false)}
-                        />
-                    )}
-                </AnimatePresence>
+            {/* Main Content Area */}
+            <div className="w-full h-full flex flex-col items-center justify-center relative">
+                {cookingMode && recipePlan ? (
+                    <CookingView
+                        recipe={recipePlan}
+                        onNext={() => { }} // No-op for now
+                        onPrev={() => { }}
+                        onComplete={() => setCookingMode(false)}
+                    />
+                ) : (
+                    // Standard State - largely empty now as transcript is floated top
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center space-y-8">
+                            {/* Status Text when not cooking */}
+                            <motion.span
+                                className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground block"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.4 }}
+                            >
+                                {getStatusText()}
+                            </motion.span>
+                        </div>
+                    </div>
+                )}
             </div>
-        </>
+
+            {/* Voice Control Bar */}
+            <motion.div
+                className={cn(
+                    "flex items-center gap-4 transition-all duration-500",
+                    "absolute bottom-8 left-1/2 -translate-x-1/2 z-50 bg-background/80 backdrop-blur-md p-3 px-6 rounded-full shadow-lg border border-border/50"
+                )}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
+            >
+                {/* LiveKit-aware Voice Control (click to disconnect) */}
+                <motion.button
+                    onClick={handleMicClick}
+                    onMouseEnter={() => setIsHoveringDisconnect(true)}
+                    onMouseLeave={() => setIsHoveringDisconnect(false)}
+                    className="flex p-3 border items-center justify-center rounded-full cursor-pointer hover:border-red-500 hover:bg-red-500/10 group transition-all bg-background/50"
+                    layout
+                    transition={{ layout: { duration: 0.4 } }}
+                >
+                    <div className="h-6 w-6 items-center justify-center flex">
+                        {isActive ? (
+                            <motion.div
+                                className="w-4 h-4 bg-primary rounded group-hover:bg-red-500 transition-colors"
+                                animate={{ rotate: isHoveringDisconnect ? 0 : [0, 180, 360] }}
+                                transition={{
+                                    duration: isHoveringDisconnect ? 0.3 : 2,
+                                    repeat: isHoveringDisconnect ? 0 : Infinity,
+                                    ease: "easeInOut",
+                                }}
+                            />
+                        ) : agentState === "thinking" ? (
+                            <Loader2 className="size-5 animate-spin group-hover:text-red-500 transition-colors" />
+                        ) : (
+                            <div className="w-4 h-4 bg-primary group-hover:bg-red-500 rounded-full transition-colors" />
+                        )}
+                    </div>
+                    <AnimatePresence mode="wait">
+                        {isConnected && (
+                            <motion.div
+                                initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+                                animate={{ opacity: 1, width: "auto", marginLeft: 8 }}
+                                exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+                                transition={{ duration: 0.4 }}
+                                className="overflow-hidden flex gap-2 items-center justify-center"
+                            >
+                                {/* Frequency Animation */}
+                                <div className="flex gap-0.5 items-center justify-center">
+                                    {audioVolumes.map((vol, i) => (
+                                        <div
+                                            key={i}
+                                            className="w-0.5 bg-primary group-hover:bg-red-500 rounded-full transition-colors"
+                                            style={{
+                                                height: `${Math.max(2, 2 + vol * 14)}px`,
+                                                transition: 'height 0.05s ease-out',
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.button>
+
+                {/* Mute Toggle Button */}
+                <button
+                    onClick={async () => {
+                        if (room) {
+                            const localParticipant = room.localParticipant
+                            const audioTracks = Array.from(localParticipant.audioTrackPublications.values())
+                            for (const pub of audioTracks) {
+                                if (pub.track) {
+                                    if (isMuted) {
+                                        await pub.track.unmute()
+                                    } else {
+                                        await pub.track.mute()
+                                    }
+                                }
+                            }
+                            setIsMuted(!isMuted)
+                        }
+                    }}
+                    className={cn(
+                        "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/50",
+                        isMuted
+                            ? "border-orange-500 bg-orange-500/10 text-orange-500"
+                            : "hover:border-foreground hover:bg-foreground hover:text-background"
+                    )}
+                >
+                    {isMuted ? <MicOff className="size-5" /> : <Mic className="size-5" />}
+                </button>
+
+                {/* Chat Toggle Button */}
+                <button
+                    onClick={() => setShowChatPanel(!showChatPanel)}
+                    className={cn(
+                        "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/50",
+                        showChatPanel
+                            ? "border-foreground bg-foreground text-background"
+                            : "hover:border-foreground hover:bg-foreground hover:text-background"
+                    )}
+                >
+                    <MessageCircle className="size-5" />
+                </button>
+
+                {/* Upload Button */}
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading || isClearing}
+                    className={cn(
+                        "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/50",
+                        "hover:border-foreground hover:bg-foreground hover:text-background",
+                        (isUploading || isClearing) && "opacity-50 cursor-not-allowed"
+                    )}
+                >
+                    {isUploading ? (
+                        <Loader2 className="size-5 animate-spin" />
+                    ) : uploadSuccess ? (
+                        <Check className="size-5" />
+                    ) : (
+                        <div className="relative">
+                            <Plus className="size-5" />
+                            {fileCount > 0 && (
+                                <span className="absolute -top-2 -right-2 text-[10px] bg-foreground text-background rounded-full size-4 flex items-center justify-center">
+                                    {fileCount}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </button>
+
+                {/* Clear Button */}
+                {fileCount > 0 && (
+                    <button
+                        onClick={onClear}
+                        disabled={isClearing || isUploading}
+                        className={cn(
+                            "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/50",
+                            "hover:border-red-500 hover:bg-red-500/10 hover:text-red-500",
+                            (isClearing || isUploading) && "opacity-50 cursor-not-allowed"
+                        )}
+                    >
+                        {isClearing ? (
+                            <Loader2 className="size-5 animate-spin" />
+                        ) : (
+                            <Trash2 className="size-5" />
+                        )}
+                    </button>
+                )}
+
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept=".pdf"
+                    className="hidden"
+                />
+            </motion.div>
+
+            {/* Chat History Panel (Floating Overlay) */}
+            <AnimatePresence>
+                {showChatPanel && (
+                    <ChatPanel
+                        transcript={transcript}
+                        onClose={() => setShowChatPanel(false)}
+                    />
+                )}
+            </AnimatePresence>
+        </div>
     )
 }
+

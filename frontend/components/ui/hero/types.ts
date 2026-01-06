@@ -55,3 +55,17 @@ export interface ShoppingItem {
     emoji: string
     quantity: number
 }
+
+export interface RecipeStep {
+    step_number: number
+    instruction: string
+    duration?: string
+}
+
+export interface RecipePlan {
+    id: string
+    title?: string
+    steps: RecipeStep[]
+    ingredients: string[]
+    current_step_index: number
+}

@@ -8,21 +8,21 @@ import { ChatPanelProps } from "./types"
 export function ChatPanel({ transcript, onClose }: ChatPanelProps) {
     return (
         <motion.div
-            initial={{ opacity: 0, width: 0 }}
-            animate={{ opacity: 1, width: "40%" }}
-            exit={{ opacity: 0, width: 0 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute bottom-28 right-4 z-50 w-full max-w-[380px] origin-bottom-right"
         >
-            <div className="h-full max-h-[60vh] flex flex-col border rounded-2xl bg-background/70 backdrop-blur-xl">
+            <div className="h-full max-h-[500px] flex flex-col border rounded-3xl bg-background/80 backdrop-blur-2xl shadow-2xl">
                 {/* Chat Header */}
-                <div className="flex items-center justify-between p-4 border-b">
-                    <span className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground">
+                <div className="flex items-center justify-between p-4 border-b bg-background/50 rounded-t-3xl">
+                    <span className="text-xs font-bold tracking-[0.2em] uppercase text-muted-foreground">
                         Conversation
                     </span>
                     <button
                         onClick={onClose}
-                        className="p-1 rounded-full hover:bg-muted transition-colors"
+                        className="p-1.5 rounded-full hover:bg-muted transition-colors"
                     >
                         <X className="size-4 text-muted-foreground" />
                     </button>
