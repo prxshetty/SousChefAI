@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { ArrowLeft, ArrowRight, Check, Clock, ChefHat, Flame } from "lucide-react"
-import { RecipePlan } from "./types"
+import { RecipePlan } from "@/components/voice/types"
 import { cn } from "@/lib/utils"
 
 interface CookingViewProps {

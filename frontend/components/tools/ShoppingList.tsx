@@ -4,7 +4,7 @@ import React from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { ShoppingCart, X, Trash2, Plus, Minus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { ShoppingItem } from "./types"
+import { ShoppingItem } from "@/components/voice/types"
 
 interface ShoppingListProps {
     items: ShoppingItem[]

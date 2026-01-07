@@ -1,6 +1,6 @@
 'use client';
 
-import { HeroSection } from '@/components/ui/hero';
+import { HeroSection } from '@/components/voice/VoiceSession';
 
 export default function Home() {
     const livekitUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || '';

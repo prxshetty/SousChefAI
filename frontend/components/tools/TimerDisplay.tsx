@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { X, Bell } from "lucide-react"
-import { Timer } from "./types"
+import { Timer } from "@/components/voice/types"
 import { cn } from "@/lib/utils"
 
 interface TimerDisplayProps {

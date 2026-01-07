@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { ArrowDownLeft, Timer, ShoppingCart, TextSearch, CookingPot } from "lucide-react"
 import { motion } from "motion/react"
-import { VoiceSelectViewProps } from "./types"
+import { VoiceSelectViewProps } from "@/components/voice/types"
 
 const features = [
     {

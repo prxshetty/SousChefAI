@@ -2,7 +2,7 @@
 
 import { ArrowUpRight } from "lucide-react"
 import { motion } from "motion/react"
-import { HeroViewProps } from "./types"
+import { HeroViewProps } from "@/components/voice/types"
 
 export function HeroView({ isHovered, isClicked, onHover, onArrowClick }: HeroViewProps) {
     return (

@@ -60,6 +60,8 @@ export interface RecipeStep {
     step_number: number
     instruction: string
     duration?: string
+    duration_minutes?: number
+    tips?: string
 }
 
 export interface RecipePlan {
@@ -68,4 +70,26 @@ export interface RecipePlan {
     steps: RecipeStep[]
     ingredients: string[]
     current_step_index: number
+}
+
+export interface VoiceControlBarProps {
+    isConnected: boolean
+    isActive: boolean
+    agentState: string
+    isMuted: boolean
+    audioVolumes: number[]
+    showChatPanel: boolean
+    isUploading: boolean
+    isClearing: boolean
+    uploadSuccess: boolean
+    fileCount: number
+    isHoveringDisconnect: boolean
+    onDisconnect: () => void
+    onMuteToggle: () => void
+    onChatToggle: () => void
+    onUploadClick: () => void
+    onClear: () => void
+    onHoverDisconnect: (hovering: boolean) => void
+    fileInputRef: React.RefObject<HTMLInputElement | null>
+    onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void
 }

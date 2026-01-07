@@ -14,7 +14,7 @@ import { ConnectionState, RoomEvent, TranscriptionSegment, Participant } from "l
 
 import { cn } from "@/lib/utils"
 
-import { VoiceActiveContent } from "./hero/voice-active-content"
+import { VoiceActiveContent } from "./VoiceActiveContent"
 
 // Types
 interface TranscriptEntry {
