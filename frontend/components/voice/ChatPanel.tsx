@@ -12,46 +12,43 @@ export function ChatPanel({ transcript, onClose }: ChatPanelProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute bottom-28 right-4 z-50 w-full max-w-[380px] origin-bottom-right"
+            className="fixed bottom-36 left-1/2 -translate-x-1/2 z-50 w-full max-w-[320px] origin-bottom"
         >
-            <div className="h-full max-h-[500px] flex flex-col border rounded-3xl bg-background/80 backdrop-blur-2xl shadow-2xl">
+            <div className="h-full max-h-[400px] flex flex-col border rounded-3xl bg-card shadow-xl overflow-hidden">
                 {/* Chat Header */}
-                <div className="flex items-center justify-between p-4 border-b bg-background/50 rounded-t-3xl">
-                    <span className="text-xs font-bold tracking-[0.2em] uppercase text-muted-foreground">
-                        Conversation
+                <div className="flex items-center justify-between px-4 py-3 bg-muted/30">
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/70">
+                        Transcript
                     </span>
                     <button
                         onClick={onClose}
-                        className="p-1.5 rounded-full hover:bg-muted transition-colors"
+                        className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                     >
-                        <X className="size-4 text-muted-foreground" />
+                        <X className="size-3.5 text-muted-foreground" />
                     </button>
                 </div>
 
                 {/* Chat Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-3 space-y-3">
                     {transcript.length === 0 ? (
-                        <p className="text-sm text-muted-foreground/50 text-center py-8">
-                            Start speaking to see the conversation here...
+                        <p className="text-xs text-muted-foreground/40 text-center py-8">
+                            Start speaking...
                         </p>
                     ) : (
                         transcript.map((entry) => (
                             <div
                                 key={entry.id}
                                 className={cn(
-                                    "flex flex-col gap-1",
+                                    "flex flex-col gap-0.5",
                                     entry.speaker === "user" ? "items-end" : "items-start"
                                 )}
                             >
-                                <span className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground">
-                                    {entry.speaker === "user" ? "You" : "SousChef"}
-                                </span>
                                 <p
                                     className={cn(
-                                        "text-sm max-w-[85%] px-3 py-2 rounded-2xl",
+                                        "text-xs px-3 py-2 rounded-2xl max-w-[85%]",
                                         entry.speaker === "user"
-                                            ? "bg-primary text-primary-foreground rounded-tr-sm"
-                                            : "bg-muted text-foreground rounded-tl-sm",
+                                            ? "bg-primary text-primary-foreground rounded-br-sm"
+                                            : "bg-muted text-foreground rounded-bl-sm",
                                         !entry.isFinal && "opacity-70"
                                     )}
                                 >
