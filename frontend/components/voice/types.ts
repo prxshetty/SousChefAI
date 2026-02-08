@@ -54,6 +54,7 @@ export interface ShoppingItem {
     category: string
     emoji: string
     quantity: number
+    estimated_price?: number
 }
 
 export interface RecipeStep {
@@ -79,6 +80,10 @@ export interface VoiceControlBarProps {
     isMuted: boolean
     audioVolumes: number[]
     showChatPanel: boolean
+    showTimers: boolean
+    showShoppingList: boolean
+    timerCount: number
+    shoppingCount: number
     isUploading: boolean
     isClearing: boolean
     uploadSuccess: boolean
@@ -87,6 +92,8 @@ export interface VoiceControlBarProps {
     onDisconnect: () => void
     onMuteToggle: () => void
     onChatToggle: () => void
+    onTimersToggle: () => void
+    onShoppingToggle: () => void
     onUploadClick: () => void
     onClear: () => void
     onHoverDisconnect: (hovering: boolean) => void

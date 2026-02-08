@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Plus, Check, Loader2, Mic, MicOff, MessageCircle, Trash2 } from "lucide-react"
+import { Plus, Check, Loader2, Mic, MicOff, MessageCircle, Trash2, Timer, ShoppingCart } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { cn } from "@/lib/utils"
 import { VoiceControlBarProps } from "./types"
@@ -13,6 +13,10 @@ export function VoiceControlBar({
     isMuted,
     audioVolumes,
     showChatPanel,
+    showTimers,
+    showShoppingList,
+    timerCount,
+    shoppingCount,
     isUploading,
     isClearing,
     uploadSuccess,
@@ -21,6 +25,8 @@ export function VoiceControlBar({
     onDisconnect,
     onMuteToggle,
     onChatToggle,
+    onTimersToggle,
+    onShoppingToggle,
     onUploadClick,
     onClear,
     onHoverDisconnect,
@@ -115,6 +121,60 @@ export function VoiceControlBar({
             >
                 <MessageCircle className="size-5" />
             </button>
+
+            {/* Timer Toggle Button */}
+            <AnimatePresence>
+                {timerCount > 0 && (
+                    <motion.button
+                        key="timer-button"
+                        initial={{ opacity: 0, scale: 0.8, width: 0, marginRight: 0 }}
+                        animate={{ opacity: 1, scale: 1, width: "auto", marginRight: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, width: 0, marginRight: 0 }}
+                        onClick={onTimersToggle}
+                        className={cn(
+                            "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/50 relative",
+                            showTimers
+                                ? "border-foreground bg-foreground text-background"
+                                : "hover:border-foreground hover:bg-foreground hover:text-background"
+                        )}
+                    >
+                        <Timer className="size-5" />
+                        <span className={cn(
+                            "absolute -top-1 -right-1 text-[10px] rounded-full size-4 flex items-center justify-center transition-colors",
+                            showTimers ? "bg-background text-foreground" : "bg-foreground text-background"
+                        )}>
+                            {timerCount}
+                        </span>
+                    </motion.button>
+                )}
+            </AnimatePresence>
+
+            {/* Shopping List Toggle Button */}
+            <AnimatePresence>
+                {shoppingCount > 0 && (
+                    <motion.button
+                        key="shopping-button"
+                        initial={{ opacity: 0, scale: 0.8, width: 0, marginRight: 0 }}
+                        animate={{ opacity: 1, scale: 1, width: "auto", marginRight: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, width: 0, marginRight: 0 }}
+                        onClick={onShoppingToggle}
+                        className={cn(
+                            "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/50 relative",
+                            showShoppingList
+                                ? "border-foreground bg-foreground text-background"
+                                : "hover:border-foreground hover:bg-foreground hover:text-background"
+                        )}
+                    >
+                        <ShoppingCart className="size-5" />
+                        <span className={cn(
+                            "absolute -top-1 -right-1 text-[10px] rounded-full size-4 flex items-center justify-center transition-colors",
+                            showShoppingList ? "bg-background text-foreground" : "bg-foreground text-background"
+                        )}>
+                            {shoppingCount}
+                        </span>
+                    </motion.button>
+                )}
+            </AnimatePresence>
 
             {/* Upload Button */}
             <button

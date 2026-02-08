@@ -39,7 +39,10 @@ export function VoiceActiveContent({
     const [timers, setTimers] = useState<Timer[]>([])
     const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([])
     const [recipePlan, setRecipePlan] = useState<RecipePlan | null>(null)
+    const [isRecipeGenerating, setIsRecipeGenerating] = useState(false)
     const [cookingMode, setCookingMode] = useState(false)
+    const [showTimers, setShowTimers] = useState(false)
+    const [showShoppingList, setShowShoppingList] = useState(false)
     const [isHoveringDisconnect, setIsHoveringDisconnect] = useState(false)
     const room = useRoomContext()
     const { localParticipant } = useLocalParticipant()
@@ -99,12 +102,20 @@ export function VoiceActiveContent({
                 if (data.type === "recipe_plan") {
                     console.log("Recipe plan received:", data.plan)
                     setRecipePlan(data.plan)
+                    setIsRecipeGenerating(false)
                     // We don't auto-start cooking mode; wait for "cooking_mode" event
+                }
+
+                if (data.type === "recipe_plan_status") {
+                    if (data.action === "started") {
+                        setIsRecipeGenerating(true)
+                    }
                 }
 
                 if (data.type === "cooking_mode") {
                     if (data.action === "start") {
                         setCookingMode(true)
+                        setIsRecipeGenerating(false)
                     } else if (data.action === "complete") {
                         // Optional: show completion celebration, then maybe exit mode after delay?
                         // For now just stay on last step or let user decide to leave.
@@ -227,6 +238,7 @@ export function VoiceActiveContent({
         if (!isConnected) return "Disconnected"
         if (agentState === "listening") return "Listening..."
         if (agentState === "speaking") return "Speaking..."
+        if (isRecipeGenerating) return "Designing Recipe..."
         if (agentState === "thinking") return "Thinking..."
         return "Ready"
     }
@@ -287,9 +299,9 @@ export function VoiceActiveContent({
         <div className="relative w-full h-full flex flex-col items-center justify-center">
             <RoomAudioRenderer />
 
-            {/* Shopping List - Fixed bottom-left */}
+            {/* Shopping List - Fixed bottom-left (toggleable) */}
             <AnimatePresence>
-                {shoppingList.length > 0 && !cookingMode && (
+                {showShoppingList && shoppingList.length > 0 && (
                     <ShoppingList
                         items={shoppingList}
                         onRemoveItem={handleRemoveShoppingItem}
@@ -299,9 +311,9 @@ export function VoiceActiveContent({
                 )}
             </AnimatePresence>
 
-            {/* Timers - Fixed bottom-right */}
+            {/* Timers - Fixed bottom-right (toggleable, auto-show when timers exist) */}
             <AnimatePresence>
-                {timers.length > 0 && (
+                {(showTimers || timers.length > 0) && timers.length > 0 && (
                     <TimerDisplay timers={timers} onRemoveTimer={handleRemoveTimer} />
                 )}
             </AnimatePresence>
@@ -361,6 +373,10 @@ export function VoiceActiveContent({
                 isMuted={isMuted}
                 audioVolumes={audioVolumes}
                 showChatPanel={showChatPanel}
+                showTimers={showTimers}
+                showShoppingList={showShoppingList}
+                timerCount={timers.length}
+                shoppingCount={shoppingList.length}
                 isUploading={isUploading}
                 isClearing={isClearing}
                 uploadSuccess={uploadSuccess}
@@ -369,6 +385,8 @@ export function VoiceActiveContent({
                 onDisconnect={handleMicClick}
                 onMuteToggle={handleMuteToggle}
                 onChatToggle={() => setShowChatPanel(!showChatPanel)}
+                onTimersToggle={() => setShowTimers(!showTimers)}
+                onShoppingToggle={() => setShowShoppingList(!showShoppingList)}
                 onUploadClick={() => fileInputRef.current?.click()}
                 onClear={onClear}
                 onHoverDisconnect={setIsHoveringDisconnect}
