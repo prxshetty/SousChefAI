@@ -73,6 +73,10 @@ Your tools:
 11. previous_step - Go back to the previous instruction
     - Use when user says "go back", "repeat that", "previous step"
 
+12. go_to_step - Navigate to a specific step number
+    - Use when user says "go to step 3", "skip to step 5", "let's move to the next step"
+    - For "next step" calculate: current step + 1
+
 Guidelines:
 - Keep responses concise and conversational since this is voice
 - Don't use complex formatting, lists, or bullet points in speech
@@ -163,6 +167,30 @@ async def souschef_session(ctx: agents.JobContext):
             ),
         ),
     )
+    
+    # Handle UI step navigation clicks to sync agent state
+    @ctx.room.on("data_received")
+    def handle_data_received(payload: bytes, participant: rtc.Participant | None = None, kind: rtc.DataPacketKind | None = None, topic: str | None = None):
+        try:
+            data = json.loads(payload.decode('utf-8'))
+            if data.get("type") == "ui_step_change":
+                action = data.get("action")
+                step_index = data.get("step_index")
+                
+                # Update agent's internal state to match UI
+                if agent.current_recipe and agent.cooking_mode_active:
+                    if action == "next" and step_index < len(agent.current_recipe.steps):
+                        # Mark current step as completed
+                        current_idx = agent.current_recipe.current_step_index
+                        if current_idx < len(agent.current_recipe.steps):
+                            agent.current_recipe.steps[current_idx].completed = True
+                        agent.current_recipe.current_step_index = step_index
+                        print(f"UI navigated to step {step_index + 1}")
+                    elif action == "previous" and step_index >= 0:
+                        agent.current_recipe.current_step_index = step_index
+                        print(f"UI navigated back to step {step_index + 1}")
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"Error handling UI step change: {e}")
     
     # Register RPC handler for cookbook reload (AFTER)
     @ctx.room.local_participant.register_rpc_method("reload_cookbook")

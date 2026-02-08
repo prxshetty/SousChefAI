@@ -22,6 +22,7 @@ export function VoiceControlBar({
     uploadSuccess,
     fileCount,
     isHoveringDisconnect,
+    cookingMode,
     onDisconnect,
     onMuteToggle,
     onChatToggle,
@@ -33,6 +34,8 @@ export function VoiceControlBar({
     fileInputRef,
     onFileSelect,
 }: VoiceControlBarProps) {
+    // Don't show upload/clear buttons during cooking mode
+    const showFileControls = !cookingMode
     return (
         <motion.div
             className={cn(
@@ -53,7 +56,7 @@ export function VoiceControlBar({
                 transition={{ layout: { duration: 0.4 } }}
             >
                 <div className="h-6 w-6 items-center justify-center flex">
-                    {isActive ? (
+                    {(isActive || agentState === "thinking") ? (
                         <motion.div
                             className="w-4 h-4 bg-primary rounded group-hover:bg-red-500 transition-colors"
                             animate={{ rotate: isHoveringDisconnect ? 0 : [0, 180, 360] }}
@@ -63,8 +66,6 @@ export function VoiceControlBar({
                                 ease: "easeInOut",
                             }}
                         />
-                    ) : agentState === "thinking" ? (
-                        <Loader2 className="size-5 animate-spin group-hover:text-red-500 transition-colors" />
                     ) : (
                         <div className="w-4 h-4 bg-primary group-hover:bg-red-500 rounded-full transition-colors" />
                     )}
@@ -139,12 +140,6 @@ export function VoiceControlBar({
                         )}
                     >
                         <Timer className="size-5" />
-                        <span className={cn(
-                            "absolute -top-1 -right-1 text-[10px] rounded-full size-4 flex items-center justify-center transition-colors",
-                            showTimers ? "bg-background text-foreground" : "bg-foreground text-background"
-                        )}>
-                            {timerCount}
-                        </span>
                     </motion.button>
                 )}
             </AnimatePresence>
@@ -176,34 +171,36 @@ export function VoiceControlBar({
                 )}
             </AnimatePresence>
 
-            {/* Upload Button */}
-            <button
-                onClick={onUploadClick}
-                disabled={isUploading || isClearing}
-                className={cn(
-                    "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/50",
-                    "hover:border-foreground hover:bg-foreground hover:text-background",
-                    (isUploading || isClearing) && "opacity-50 cursor-not-allowed"
-                )}
-            >
-                {isUploading ? (
-                    <Loader2 className="size-5 animate-spin" />
-                ) : uploadSuccess ? (
-                    <Check className="size-5" />
-                ) : (
-                    <div className="relative">
-                        <Plus className="size-5" />
-                        {fileCount > 0 && (
-                            <span className="absolute -top-2 -right-2 text-[10px] bg-foreground text-background rounded-full size-4 flex items-center justify-center">
-                                {fileCount}
-                            </span>
-                        )}
-                    </div>
-                )}
-            </button>
+            {/* Upload Button - Hidden during cooking */}
+            {showFileControls && (
+                <button
+                    onClick={onUploadClick}
+                    disabled={isUploading || isClearing}
+                    className={cn(
+                        "flex items-center justify-center p-3 border rounded-full transition-all duration-300 cursor-pointer bg-background/50",
+                        "hover:border-foreground hover:bg-foreground hover:text-background",
+                        (isUploading || isClearing) && "opacity-50 cursor-not-allowed"
+                    )}
+                >
+                    {isUploading ? (
+                        <Loader2 className="size-5 animate-spin" />
+                    ) : uploadSuccess ? (
+                        <Check className="size-5" />
+                    ) : (
+                        <div className="relative">
+                            <Plus className="size-5" />
+                            {fileCount > 0 && (
+                                <span className="absolute -top-2 -right-2 text-[10px] bg-foreground text-background rounded-full size-4 flex items-center justify-center">
+                                    {fileCount}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </button>
+            )}
 
-            {/* Clear Button */}
-            {fileCount > 0 && (
+            {/* Clear Button - Hidden during cooking */}
+            {showFileControls && fileCount > 0 && (
                 <button
                     onClick={onClear}
                     disabled={isClearing || isUploading}

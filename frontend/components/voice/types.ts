@@ -89,6 +89,7 @@ export interface VoiceControlBarProps {
     uploadSuccess: boolean
     fileCount: number
     isHoveringDisconnect: boolean
+    cookingMode?: boolean  // Hide upload/clear buttons during cooking
     onDisconnect: () => void
     onMuteToggle: () => void
     onChatToggle: () => void

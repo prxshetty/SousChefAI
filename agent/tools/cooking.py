@@ -215,3 +215,62 @@ class CookingMixin:
                "success": False,
                "message": "We're already at the first step."
             }
+
+    @function_tool()
+    async def go_to_step(
+        self,
+        context: RunContext,
+        step_number: int,
+    ) -> dict:
+        """
+        Navigate to a specific step in the recipe. Use when user requests a specific step
+        like "go to step 3", "take me to step 5", "skip to the last step", or
+        "let's move to the next step" (in which case calculate next step number).
+        
+        Args:
+            step_number: The step number to navigate to (1-indexed, e.g., 1 for first step)
+        """
+        if not self.current_recipe or not self.cooking_mode_active:
+            return {"success": False, "message": "We're not in cooking mode yet."}
+        
+        # Convert 1-indexed step number to 0-indexed
+        target_idx = step_number - 1
+        
+        if target_idx < 0 or target_idx >= len(self.current_recipe.steps):
+            return {
+                "success": False,
+                "message": f"Invalid step number. Please choose between 1 and {len(self.current_recipe.steps)}."
+            }
+        
+        # Mark steps up to target as completed (if going forward)
+        current_idx = self.current_recipe.current_step_index
+        if target_idx > current_idx:
+            for i in range(current_idx, target_idx):
+                self.current_recipe.steps[i].completed = True
+        
+        # Update current step
+        self.current_recipe.current_step_index = target_idx
+        target_step = self.current_recipe.steps[target_idx]
+        
+        # Update UI
+        if self._room:
+            payload = json.dumps({
+                "type": "step_update",
+                "step_index": target_idx
+            })
+            await self._room.local_participant.publish_data(
+                payload.encode('utf-8'),
+                reliable=True
+            )
+        
+        # Check if this is the last step
+        is_last = target_idx == len(self.current_recipe.steps) - 1
+        
+        return {
+            "success": True,
+            "step_number": target_step.step_number,
+            "instruction": target_step.instruction,
+            "tips": target_step.tips,
+            "is_last_step": is_last,
+            "message": f"Now on Step {target_step.step_number}: {target_step.instruction}"
+        }

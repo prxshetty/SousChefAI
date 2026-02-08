@@ -43,8 +43,11 @@ class RecipePlan:
     current_step_index: int = 0
     
     def to_dict(self):
+        import uuid
         return {
-            "name": self.name,
+            "id": str(uuid.uuid4()),  # Generate unique ID for frontend
+            "title": self.name,  # Frontend expects 'title', not 'name'
+            "name": self.name,  # Keep for backwards compatibility
             "servings": self.servings,
             "prep_time": self.prep_time,
             "cook_time": self.cook_time,

@@ -26,20 +26,36 @@ export function CookingView({ recipe, onNext, onPrev, onComplete }: CookingViewP
     const [isLoading, setIsLoading] = useState(false)
     const [videoError, setVideoError] = useState(false)
 
-    // Fetch YouTube video for current step
+    // Video cache to prevent refetching when navigating steps
+    const videoCacheRef = useRef<Map<string, YouTubeVideo | null>>(new Map())
+
+    // Fetch YouTube video for current step (with caching)
     const fetchVideo = useCallback(async (instruction: string) => {
+        // Check cache first
+        if (videoCacheRef.current.has(instruction)) {
+            const cached = videoCacheRef.current.get(instruction)
+            setVideo(cached || null)
+            setVideoError(!cached)
+            setIsLoading(false)
+            return
+        }
+
         setIsLoading(true)
         setVideoError(false)
         try {
             const response = await fetch(`/api/youtube?q=${encodeURIComponent(instruction)}`)
             if (response.ok) {
                 const data = await response.json()
+                // Cache the result
+                videoCacheRef.current.set(instruction, data)
                 setVideo(data)
             } else {
+                videoCacheRef.current.set(instruction, null)
                 setVideoError(true)
                 setVideo(null)
             }
         } catch {
+            videoCacheRef.current.set(instruction, null)
             setVideoError(true)
             setVideo(null)
         } finally {
@@ -103,7 +119,7 @@ export function CookingView({ recipe, onNext, onPrev, onComplete }: CookingViewP
             </motion.div>
 
             {/* Main Content - 3 Columns */}
-            <div className="flex flex-1 min-h-0 gap-4 p-4">
+            <div className="flex flex-1 min-h-0 gap-4 p-4 pb-24">
                 {/* LEFT COLUMN: Ingredients (~20%) */}
                 <motion.div
                     initial={{ x: -30, opacity: 0 }}

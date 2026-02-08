@@ -123,12 +123,11 @@ export function VoiceActiveContent({
                 }
 
                 if (data.type === "step_update") {
-                    if (recipePlan) {
-                        setRecipePlan(prev => prev ? ({
-                            ...prev,
-                            current_step_index: data.step_index
-                        }) : null)
-                    }
+                    // Always update using the setter function to avoid stale closure
+                    setRecipePlan(prev => prev ? ({
+                        ...prev,
+                        current_step_index: data.step_index
+                    }) : null)
                 }
             } catch (e) {
             }
@@ -270,11 +269,53 @@ export function VoiceActiveContent({
         }
     }
 
-    // Handlers for Cooking View (triggered manually via UI if needed, though mostly voice driven)
-    const handleNextStep = () => {
+    // Handlers for Cooking View - send navigation requests to agent
+    const handleNextStep = async () => {
+        if (!room || !recipePlan) return
 
-        // In a real app, this might send an RPC to the agent to trigger the next step
-        // For now, relies on voice command or we implement RPC
+        // Update local state optimistically
+        const nextIdx = recipePlan.current_step_index + 1
+        if (nextIdx < recipePlan.steps.length) {
+            setRecipePlan(prev => prev ? ({
+                ...prev,
+                current_step_index: nextIdx
+            }) : null)
+
+            // Send step update to agent for sync
+            const payload = JSON.stringify({
+                type: "ui_step_change",
+                action: "next",
+                step_index: nextIdx
+            })
+            await room.localParticipant.publishData(
+                new TextEncoder().encode(payload),
+                { reliable: true }
+            )
+        }
+    }
+
+    const handlePrevStep = async () => {
+        if (!room || !recipePlan) return
+
+        // Update local state optimistically
+        const prevIdx = recipePlan.current_step_index - 1
+        if (prevIdx >= 0) {
+            setRecipePlan(prev => prev ? ({
+                ...prev,
+                current_step_index: prevIdx
+            }) : null)
+
+            // Send step update to agent for sync
+            const payload = JSON.stringify({
+                type: "ui_step_change",
+                action: "previous",
+                step_index: prevIdx
+            })
+            await room.localParticipant.publishData(
+                new TextEncoder().encode(payload),
+                { reliable: true }
+            )
+        }
     }
 
     // Handle mute toggle
@@ -311,16 +352,16 @@ export function VoiceActiveContent({
                 )}
             </AnimatePresence>
 
-            {/* Timers - Fixed bottom-right (toggleable, auto-show when timers exist) */}
+            {/* Timers - Toggleable via Control Bar, only show if timers exist */}
             <AnimatePresence>
-                {(showTimers || timers.length > 0) && timers.length > 0 && (
+                {showTimers && timers.length > 0 && (
                     <TimerDisplay timers={timers} onRemoveTimer={handleRemoveTimer} />
                 )}
             </AnimatePresence>
 
-            {/* Persistent Transcript Display - Always at top */}
+            {/* Persistent Transcript Display - Only show when NOT in cooking mode */}
             <AnimatePresence mode="wait">
-                {currentTranscript && (
+                {currentTranscript && !cookingMode && (
                     <motion.div
                         key={currentTranscript.id}
                         initial={{ opacity: 0, y: -20 }}
@@ -328,10 +369,7 @@ export function VoiceActiveContent({
                         exit={{ opacity: 0, y: 10 }}
                         className="fixed top-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-6 text-center pointer-events-none"
                     >
-                        <p className={cn(
-                            "text-2xl font-light leading-relaxed tracking-wide drop-shadow-sm",
-                            cookingMode ? "text-foreground/90 bg-background/80 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-border/50" : "text-foreground"
-                        )}>
+                        <p className="text-2xl font-light leading-relaxed tracking-wide drop-shadow-sm text-foreground">
                             {currentTranscript.text}
                         </p>
                     </motion.div>
@@ -343,8 +381,8 @@ export function VoiceActiveContent({
                 {cookingMode && recipePlan ? (
                     <CookingView
                         recipe={recipePlan}
-                        onNext={() => { }} // No-op for now
-                        onPrev={() => { }}
+                        onNext={handleNextStep}
+                        onPrev={handlePrevStep}
                         onComplete={() => setCookingMode(false)}
                     />
                 ) : (
@@ -382,6 +420,7 @@ export function VoiceActiveContent({
                 uploadSuccess={uploadSuccess}
                 fileCount={fileCount}
                 isHoveringDisconnect={isHoveringDisconnect}
+                cookingMode={cookingMode}
                 onDisconnect={handleMicClick}
                 onMuteToggle={handleMuteToggle}
                 onChatToggle={() => setShowChatPanel(!showChatPanel)}
