@@ -13,16 +13,17 @@ class ShoppingListMixin:
         Add items to the user's shopping list. Use this when the user wants to remember
         ingredients they need to buy.
         
-        For EACH item, you MUST provide: name|category|emoji|quantity
+        For EACH item, you MUST provide: name|category|emoji|quantity|estimated_price
         - name: The ingredient name
         - category: One of: Dairy, Produce, Meat, Seafood, Bakery, Pantry, Frozen, Beverages, Spices, Other
         - emoji: A single emoji representing the item
         - quantity: Number needed (use 1 if not specified)
+        - estimated_price: Your best estimate of the total price in USD for that quantity (e.g., 3.50)
         
         Args:
             items: Pipe-separated item details, comma-separated for multiple items.
-                   Format: "name|category|emoji|quantity, name|category|emoji|quantity"
-                   Example: "eggs|Dairy|🥚|12, butter|Dairy|🧈|1, broccoli|Produce|🥦|2"
+                   Format: "name|category|emoji|quantity|estimated_price, ..."
+                   Example: "eggs|Dairy|🥚|12|4.50, butter|Dairy|🧈|1|5.00, broccoli|Produce|🥦|2|3.00"
         """
         # Initialize shopping list if not exists
         if not hasattr(self, '_shopping_list'):
@@ -42,17 +43,24 @@ class ShoppingListMixin:
                 quantity = int(parts[3]) if len(parts) > 3 else 1
             except ValueError:
                 quantity = 1
+            try:
+                estimated_price = float(parts[4]) if len(parts) > 4 else None
+            except ValueError:
+                estimated_price = None
             
             existing = next((i for i in self._shopping_list if i["name"].lower() == name.lower()), None)
             if existing:
                 existing["quantity"] += quantity
+                if estimated_price and existing.get("estimated_price"):
+                    existing["estimated_price"] += estimated_price
             else:
                 new_item = {
                     "id": f"item-{int(time_module.time() * 1000)}-{len(self._shopping_list)}",
                     "name": name,
                     "category": category,
                     "emoji": emoji,
-                    "quantity": quantity
+                    "quantity": quantity,
+                    "estimated_price": estimated_price,
                 }
                 self._shopping_list.append(new_item)
                 added.append(name)

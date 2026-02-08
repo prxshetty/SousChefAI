@@ -32,6 +32,13 @@ class CookingMixin:
                 "message": "Please upload a cookbook first!"
             }
 
+        # Notify frontend that we are starting to look (loading state)
+        if self._room:
+            payload = json.dumps({
+                "type": "recipe_plan_status",
+                "action": "started"
+            })
+            await self._room.local_participant.publish_data(payload.encode('utf-8'), reliable=True)
         # 2. Search RAG
         # We fetch a bit more context for full recipe extraction
         rag_content = self.rag.query(recipe_query, top_k=5)
