@@ -16,15 +16,10 @@ async function extractSearchQuery(instruction: string, googleApiKey: string): Pr
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{
-                        text: `Extract a short YouTube search query (3-5 words max) STRICTLY based on the actions and ingredients mentioned in this text. Do NOT add any external context or ingredients not explicitly stated.
-                            
-Text: "${instruction}"
-
-Search query:`
-
-Instruction: "${instruction}"
-
-Search query: `
+                        parts: [{
+                            text: `Extract a short YouTube search query (3-5 words max) STRICTLY based on the actions and ingredients mentioned in this text. Do NOT add any external context or ingredients not explicitly stated.
+                            Text: "${instruction}"
+                            Search query: `
                         }]
                     }],
                     generationConfig: {
@@ -91,7 +86,7 @@ export async function GET(request: NextRequest) {
 
         const url = new URL('https://www.googleapis.com/youtube/v3/search');
         url.searchParams.set('part', 'snippet');
-        url.searchParams.set('q', `${ searchQuery } cooking tutorial`);
+        url.searchParams.set('q', `${searchQuery} cooking tutorial`);
         url.searchParams.set('type', 'video');
         url.searchParams.set('maxResults', '1');
         url.searchParams.set('videoDuration', 'short');
