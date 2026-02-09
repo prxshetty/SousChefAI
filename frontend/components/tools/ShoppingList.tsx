@@ -51,7 +51,7 @@ export function ShoppingList({ items, onRemoveItem, onUpdateQuantity, onClearAll
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="fixed left-4 bottom-28 z-50"
+            className="fixed left-4 bottom-4 z-50"
         >
             <div className="w-72 border rounded-2xl bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden">
                 {/* Header */}

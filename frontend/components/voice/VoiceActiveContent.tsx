@@ -85,6 +85,7 @@ export function VoiceActiveContent({
                             startedAt: Date.now(),
                         }
                         setTimers((prev) => [...prev, newTimer])
+                        setShowTimers(true) // Auto-show when timer is added
                     } else if (data.action === "clear_all") {
                         console.log("Clearing all timers")
                         setTimers([])
@@ -94,7 +95,11 @@ export function VoiceActiveContent({
                 if (data.type === "shopping_list") {
                     console.log("Shopping list update:", data)
                     if (data.action === "update") {
-                        setShoppingList(data.items || [])
+                        const items = data.items || []
+                        setShoppingList(items)
+                        if (items.length > 0) {
+                            setShowShoppingList(true) // Auto-show when items are added
+                        }
                     } else if (data.action === "clear") {
                         setShoppingList([])
                     }

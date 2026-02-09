@@ -12,7 +12,7 @@ export function ChatPanel({ transcript, onClose }: ChatPanelProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-36 left-1/2 -translate-x-1/2 z-50 w-full max-w-[320px] origin-bottom"
+            className="fixed top-20 right-6 z-50 w-full max-w-[320px] origin-top-right"
         >
             <div className="h-full max-h-[400px] flex flex-col border rounded-3xl bg-card shadow-xl overflow-hidden">
                 {/* Chat Header */}

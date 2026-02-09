@@ -143,6 +143,16 @@ async def souschef_session(ctx: agents.JobContext):
     voice_name = GEMINI_VOICE_OPTIONS.get(voice_preference, GEMINI_VOICE_OPTIONS[DEFAULT_VOICE])
     print(f"Using Gemini voice: {voice_preference} ({voice_name})")
     
+    # Fallback for API Key
+    if not api_key:
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            print("WARNING: GOOGLE_API_KEY not found in environment variables")
+        else:
+             # Mask key for privacy in logs
+            masked = f"{api_key[:4]}...{api_key[-4:]}"
+            print(f"Using GOOGLE_API_KEY from environment: {masked}")
+    
     # Gemini Live API - Native audio-to-audio (no STT/TTS needed!)
     session = AgentSession(
         llm=google.realtime.RealtimeModel(

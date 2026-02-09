@@ -72,10 +72,10 @@ export function VoiceControls({
                 onClick={onChatToggle}
                 className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                    "bg-background/50 backdrop-blur-sm border",
+                    "backdrop-blur-sm border",
                     showChatPanel
-                        ? "border-foreground/30 bg-foreground/10"
-                        : "border-border/10 hover:scale-105 hover:border-border/30"
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-500"
+                        : "bg-background/50 border-border/10 hover:scale-105 hover:border-border/30"
                 )}
                 title="Chat"
             >
@@ -143,15 +143,15 @@ export function VoiceControls({
                         onClick={onShoppingToggle}
                         className={cn(
                             "w-8 h-8 rounded-full flex items-center justify-center transition-all relative",
-                            "bg-background/50 backdrop-blur-sm border",
+                            "backdrop-blur-sm border",
                             showShoppingList
-                                ? "border-foreground/30 bg-foreground/10"
-                                : "border-border/10 hover:scale-105 hover:border-border/30"
+                                ? "border-orange-500/50 bg-orange-500/10 text-orange-500"
+                                : "bg-background/50 border-border/10 hover:scale-105 hover:border-border/30"
                         )}
                         title="Shopping List"
                     >
                         <ShoppingCart className="size-4" />
-                        <span className="absolute -top-1 -right-1 text-[10px] bg-foreground text-background rounded-full size-4 flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 text-[10px] bg-orange-500 text-white rounded-full size-4 flex items-center justify-center font-medium">
                             {shoppingCount}
                         </span>
                     </motion.button>
@@ -168,15 +168,15 @@ export function VoiceControls({
                         onClick={onTimersToggle}
                         className={cn(
                             "w-8 h-8 rounded-full flex items-center justify-center transition-all relative",
-                            "bg-background/50 backdrop-blur-sm border",
+                            "backdrop-blur-sm border",
                             showTimers
-                                ? "border-foreground/30 bg-foreground/10"
-                                : "border-border/10 hover:scale-105 hover:border-border/30"
+                                ? "border-orange-500/50 bg-orange-500/10 text-orange-500"
+                                : "bg-background/50 border-border/10 hover:scale-105 hover:border-border/30"
                         )}
                         title="Timers"
                     >
                         <Timer className="size-4" />
-                        <span className="absolute -top-1 -right-1 text-[10px] bg-foreground text-background rounded-full size-4 flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 text-[10px] bg-orange-500 text-white rounded-full size-4 flex items-center justify-center font-medium">
                             {timerCount}
                         </span>
                     </motion.button>

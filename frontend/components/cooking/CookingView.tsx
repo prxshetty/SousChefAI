@@ -167,12 +167,6 @@ export function CookingView({ recipe, onNext, onPrev, onComplete }: CookingViewP
                                         </div>
                                     </motion.div>
                                 )}
-                                {currentStep.duration_minutes && (
-                                    <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium flex items-center gap-1.5 border border-blue-100">
-                                        <Clock className="size-3.5" />
-                                        {currentStep.duration_minutes} min
-                                    </span>
-                                )}
                             </motion.div>
                         </AnimatePresence>
 
