@@ -176,9 +176,11 @@ class CookbookRAG:
             self._create_index()
             
             if self.index is not None:
-                doc_count = len(list(DATA_DIR.glob("**/*.pdf")))
+                pdf_count = len(list(DATA_DIR.glob("**/*.pdf")))
+                txt_count = len(list(DATA_DIR.glob("**/*.txt")))
+                doc_count = pdf_count + txt_count
                 stats = self.pinecone_index.describe_index_stats()
-                return True, f"Successfully indexed {doc_count} PDF(s) with {stats.total_vector_count} vectors. I'm ready to answer questions!"
+                return True, f"Successfully indexed {doc_count} document(s) ({pdf_count} PDFs, {txt_count} recipe images) with {stats.total_vector_count} vectors. I'm ready to answer questions!"
             else:
                 return False, "Failed to create index."
         except Exception as e:

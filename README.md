@@ -1,6 +1,6 @@
 # SousChef AI 👨‍🍳
 
-A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs, ask questions, get recipe advice, create shopping lists and timers and have a natural conversation about food — all through voice!
+A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs or recipe images (grandma's handwritten recipes, cookbook photos), ask questions, get recipe advice, and have a natural conversation about food — all through voice!
 
 🌐 **[Live Demo](https://main.d2iyik5u6ri7ha.amplifyapp.com/)**
 
@@ -19,7 +19,7 @@ A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs, a
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                     Next.js Frontend (AWS Amplify)                   │   │
 │  │  - Voice selection (male/female)                                     │   │
-│  │  - PDF upload for RAG                                                │   │
+│  │  - PDF & Image upload for RAG                                        │   │
 │  │  - Real-time transcript display                                      │   │
 │  │  - WebRTC audio streaming                                            │   │
 │  └──────────────────────────────────┬──────────────────────────────────┘   │
@@ -61,7 +61,9 @@ A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs, a
 
 1. **User Opens App** → Frontend loads on AWS Amplify
 2. **Voice Selection** → User picks male or female voice
-3. **Room Creation** → Frontend calls `/api/token` which creates a LiveKit room with voice metadata
+3. **Recipe Ingestion** → User uploads PDF or snaps a photo of a recipe
+4. **OCR (if image)** → Gemini Vision extracts text from images and saves as `.txt`
+5. **Room Creation** → Frontend calls `/api/token` which creates a LiveKit room with voice metadata
 4. **Agent Joins** → Python agent (on EC2) receives job from LiveKit Cloud and joins the room
 5. **Voice Capture** → Browser captures microphone audio via WebRTC
 6. **VAD (Voice Activity Detection)** → Silero detects when user is speaking
@@ -71,19 +73,19 @@ A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs, a
 10. **TTS (Text-to-Speech)** → Deepgram Aura 2 converts response to natural speech
 11. **Audio Playback** → Audio streams back to browser via WebRTC
 
-### RAG Integration
-
-The RAG (Retrieval-Augmented Generation) pipeline allows users to upload their own cooking PDFs:
+The RAG (Retrieval-Augmented Generation) pipeline allows users to upload cooking PDFs or snap photos of recipes:
 
 ```
-PDF Upload → Chunking → Embedding → Pinecone → Query → Context Injection → LLM
+PDF/Image Upload → [OCR (Gemini)] → Chunking → Embedding → Pinecone → Query → Context Injection → LLM
 ```
 
 **Implementation:**
 
-1. **Document Upload**: User uploads PDF via frontend → saved to `/tmp/` on server
+1. **Document Upload**: User uploads PDF or Image via frontend → saved to `/agent/data/`
+   - **PDFs**: Stored directly
+   - **Images**: Automatically processed via **Gemini 2.0 Flash Vision** to extract text, saved as `.txt`
 2. **Ingestion (LlamaIndex)**:
-   - PDF parsed with `SimpleDirectoryReader`
+   - Documents parsed with `SimpleDirectoryReader` (supports `.pdf` and `.txt`)
    - Text chunked using `SentenceSplitter` (chunk_size=512, overlap=50)
    - Chunks embedded using OpenAI's `text-embedding-3-small`
 3. **Vector Storage (Pinecone)**:
@@ -111,7 +113,7 @@ The agent has built-in function tools that the LLM intelligently decides when to
 | **add_to_shopping_list** | "Add eggs, butter, milk to my list" | Floating shopping list (bottom-left) |
 | **remove_from_shopping_list** | "I already have eggs" | Item removed from list |
 | **clear_shopping_list** | "Clear my shopping list" | List emptied |
-| **reload_cookbook** | Triggered after PDF upload | Agent confirms verbally |
+| **reload_cookbook** | Triggered after PDF/Image upload | Agent confirms verbally |
 
 **Tool Architecture:**
 - Tools are `@function_tool()` decorated methods on the Agent class
@@ -130,6 +132,7 @@ The agent has built-in function tools that the LLM intelligently decides when to
 | **TTS** | Deepgram Aura 2 | Natural text-to-speech |
 | **Turn Detection** | LiveKit Multilingual Model | Know when user stops talking |
 | **RAG Framework** | LlamaIndex | Document ingestion and querying |
+| **OCR Service** | Gemini 2.0 Flash | Image-to-text for handwritten recipes |
 | **Vector Database** | Pinecone (Serverless) | Semantic search |
 | **Embeddings** | OpenAI text-embedding-3-small | Text vectorization |
 | **Frontend** | Next.js 14 + React 18 | Web application |

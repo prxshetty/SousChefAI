@@ -9,6 +9,7 @@
         "lint": "next lint"
     },
     "dependencies": {
+        "@google/generative-ai": "^0.24.1",
         "@livekit/components-react": "^2.0.0",
         "@tailwindcss/postcss": "^4.1.18",
         "class-variance-authority": "^0.7.1",

@@ -18,7 +18,8 @@ import { ChatPanel } from "./ChatPanel"
 import { TimerDisplay } from "@/components/tools/TimerDisplay"
 import { ShoppingList } from "@/components/tools/ShoppingList"
 import { CookingView } from "@/components/cooking/CookingView"
-import { VoiceControlBar } from "./VoiceControlBar"
+import { VoiceControls } from "./VoiceControls"
+import { TranscriptFooter } from "./TranscriptFooter"
 
 export function VoiceActiveContent({
     onUpload,
@@ -225,23 +226,6 @@ export function VoiceActiveContent({
         }
     }
 
-
-
-    // Determine status text
-    const getStatusText = () => {
-        if (isClearing) return "Clearing cookbook..."
-        if (isUploading) return "Uploading cookbook..."
-        if (isProcessing) return "Processing cookbook..."
-        if (uploadSuccess) return "Cookbook ready!"
-        if (isConnecting) return "Connecting..."
-        if (!isConnected) return "Disconnected"
-        if (agentState === "listening") return "Listening..."
-        if (agentState === "speaking") return "Speaking..."
-        if (isRecipeGenerating) return "Designing Recipe..."
-        if (agentState === "thinking") return "Thinking..."
-        return "Ready"
-    }
-
     // Handle disconnect - ensure complete cleanup
     const handleMicClick = async () => {
         try {
@@ -359,22 +343,7 @@ export function VoiceActiveContent({
                 )}
             </AnimatePresence>
 
-            {/* Persistent Transcript Display - Only show when NOT in cooking mode */}
-            <AnimatePresence mode="wait">
-                {currentTranscript && !cookingMode && (
-                    <motion.div
-                        key={currentTranscript.id}
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="fixed top-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-6 text-center pointer-events-none"
-                    >
-                        <p className="text-2xl font-light leading-relaxed tracking-wide drop-shadow-sm text-foreground">
-                            {currentTranscript.text}
-                        </p>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Transcript moved to footer */}
 
             {/* Main Content Area */}
             <div className="w-full h-full flex flex-col items-center justify-center relative">
@@ -388,38 +357,23 @@ export function VoiceActiveContent({
                 ) : (
                     // Standard State - largely empty now as transcript is floated top
                     <div className="flex-1 flex items-center justify-center">
-                        <div className="text-center space-y-8">
-                            {/* Status Text when not cooking */}
-                            <motion.span
-                                className="text-xs font-medium tracking-[0.3em] uppercase text-muted-foreground block"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.4 }}
-                            >
-                                {getStatusText()}
-                            </motion.span>
-                        </div>
+                        {/* Central area is now clean, status stays in footer */}
                     </div>
                 )}
             </div>
 
-            {/* Voice Control Bar */}
-            <VoiceControlBar
-                isConnected={isConnected}
-                isActive={isActive}
-                agentState={agentState}
+            {/* Voice Controls - Top Right */}
+            <VoiceControls
                 isMuted={isMuted}
-                audioVolumes={audioVolumes}
                 showChatPanel={showChatPanel}
                 showTimers={showTimers}
                 showShoppingList={showShoppingList}
                 timerCount={timers.length}
                 shoppingCount={shoppingList.length}
+                fileCount={fileCount}
                 isUploading={isUploading}
                 isClearing={isClearing}
                 uploadSuccess={uploadSuccess}
-                fileCount={fileCount}
-                isHoveringDisconnect={isHoveringDisconnect}
                 cookingMode={cookingMode}
                 onDisconnect={handleMicClick}
                 onMuteToggle={handleMuteToggle}
@@ -428,9 +382,17 @@ export function VoiceActiveContent({
                 onShoppingToggle={() => setShowShoppingList(!showShoppingList)}
                 onUploadClick={() => fileInputRef.current?.click()}
                 onClear={onClear}
-                onHoverDisconnect={setIsHoveringDisconnect}
                 fileInputRef={fileInputRef}
                 onFileSelect={handleFileSelect}
+            />
+
+
+            {/* Transcript Footer - Bottom */}
+            <TranscriptFooter
+                transcript={currentTranscript?.text || null}
+                agentState={agentState}
+                audioVolumes={audioVolumes}
+                isVisible={!cookingMode}
             />
 
             {/* Chat History Panel (Floating Overlay) */}
@@ -445,4 +407,3 @@ export function VoiceActiveContent({
         </div>
     )
 }
-

@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Plus, Check, Loader2, Mic, MicOff, MessageCircle, Trash2, Timer, ShoppingCart } from "lucide-react"
+import { Plus, Check, Loader2, Mic, MicOff, MessageCircle, Trash2, Timer, ShoppingCart, PhoneOff } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { cn } from "@/lib/utils"
 import { VoiceControlBarProps } from "./types"
@@ -56,19 +56,19 @@ export function VoiceControlBar({
                 transition={{ layout: { duration: 0.4 } }}
             >
                 <div className="h-6 w-6 items-center justify-center flex">
-                    {(isActive || agentState === "thinking") ? (
+                    {isHoveringDisconnect ? (
+                        <PhoneOff className="size-5 text-red-500" />
+                    ) : agentState === "thinking" ? (
                         <motion.div
-                            className="w-4 h-4 bg-primary rounded group-hover:bg-red-500 transition-colors"
-                            animate={{ rotate: isHoveringDisconnect ? 0 : [0, 180, 360] }}
+                            className="w-4 h-4 bg-primary rounded"
+                            animate={{ rotate: [0, 180, 360] }}
                             transition={{
-                                duration: isHoveringDisconnect ? 0.3 : 2,
-                                repeat: isHoveringDisconnect ? 0 : Infinity,
+                                duration: 2,
+                                repeat: Infinity,
                                 ease: "easeInOut",
                             }}
                         />
-                    ) : (
-                        <div className="w-4 h-4 bg-primary group-hover:bg-red-500 rounded-full transition-colors" />
-                    )}
+                    ) : null}
                 </div>
                 <AnimatePresence mode="wait">
                     {isConnected && (

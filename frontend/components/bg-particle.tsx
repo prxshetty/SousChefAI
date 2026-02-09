@@ -175,15 +175,19 @@ const Particles: React.FC<ParticlesProps> = ({
         const centerX = canvasSize.current.w / 2
         const centerY = canvasSize.current.h / 2
 
+        // Bottom exclusion zone for footer glow
+        const bottomExclusionY = canvasSize.current.h * 0.85
+
         let x: number, y: number
 
-        // Keep generating positions until we get one outside the center zone
+        // Keep generating positions until we get one outside the center and bottom zones
         do {
             x = Math.floor(Math.random() * canvasSize.current.w)
             y = Math.floor(Math.random() * canvasSize.current.h)
         } while (
-            Math.abs(x - centerX) < centerExclusionX &&
-            Math.abs(y - centerY) < centerExclusionY
+            (Math.abs(x - centerX) < centerExclusionX &&
+                Math.abs(y - centerY) < centerExclusionY) ||
+            y > bottomExclusionY
         )
 
         const translateX = 0

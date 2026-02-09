@@ -169,7 +169,6 @@ async def souschef_session(ctx: agents.JobContext):
     )
     
     # Handle UI step navigation clicks to sync agent state
-    @ctx.room.on("data_received")
     def handle_data_received(payload: bytes, participant: rtc.Participant | None = None, kind: rtc.DataPacketKind | None = None, topic: str | None = None):
         try:
             data = json.loads(payload.decode('utf-8'))
@@ -191,6 +190,8 @@ async def souschef_session(ctx: agents.JobContext):
                         print(f"UI navigated back to step {step_index + 1}")
         except (json.JSONDecodeError, Exception) as e:
             print(f"Error handling UI step change: {e}")
+    
+    ctx.room.on("data_received", handle_data_received)
     
     # Register RPC handler for cookbook reload (AFTER)
     @ctx.room.local_participant.register_rpc_method("reload_cookbook")
