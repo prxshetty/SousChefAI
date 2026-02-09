@@ -24,7 +24,7 @@ export interface VoiceActiveContentProps {
 }
 
 export interface VoiceSelectViewProps {
-    onVoiceSelect: (voice: "male" | "female") => void
+    onVoiceSelect: (voice: "male" | "female", apiKey?: string) => void
     onBack: () => void
 }
 
@@ -63,41 +63,23 @@ export interface RecipeStep {
     duration?: string
     duration_minutes?: number
     tips?: string
+    completed?: boolean
+}
+
+export interface Ingredient {
+    name: string
+    quantity: string
+    emoji: string
 }
 
 export interface RecipePlan {
     id: string
     title?: string
+    name?: string
     steps: RecipeStep[]
-    ingredients: string[]
+    ingredients: Ingredient[]
     current_step_index: number
-}
-
-export interface VoiceControlBarProps {
-    isConnected: boolean
-    isActive: boolean
-    agentState: string
-    isMuted: boolean
-    audioVolumes: number[]
-    showChatPanel: boolean
-    showTimers: boolean
-    showShoppingList: boolean
-    timerCount: number
-    shoppingCount: number
-    isUploading: boolean
-    isClearing: boolean
-    uploadSuccess: boolean
-    fileCount: number
-    isHoveringDisconnect: boolean
-    cookingMode?: boolean  // Hide upload/clear buttons during cooking
-    onDisconnect: () => void
-    onMuteToggle: () => void
-    onChatToggle: () => void
-    onTimersToggle: () => void
-    onShoppingToggle: () => void
-    onUploadClick: () => void
-    onClear: () => void
-    onHoverDisconnect: (hovering: boolean) => void
-    fileInputRef: React.RefObject<HTMLInputElement | null>
-    onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void
+    servings?: string
+    prep_time?: string
+    cook_time?: string
 }

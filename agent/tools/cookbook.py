@@ -19,7 +19,10 @@ class CookbookMixin:
         Reload the cookbook after a new PDF has been uploaded.
         Call this when the user mentions they've uploaded a new document.
         """
-        success, message = reload_rag()
+        if hasattr(self, 'rag') and self.rag:
+            success, message = self.rag.reload_index()
+        else:
+            success, message = reload_rag()
         return {
             "success": success,
             "message": message

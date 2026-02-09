@@ -38,7 +38,7 @@ export function TranscriptFooter({ transcript, agentState, audioVolumes, isVisib
 
     // Show hue only for listening/speaking states
     const showHue = agentState === "listening" || agentState === "speaking"
-    const isThinking = agentState === "thinking"
+    const showScanner = agentState === "thinking" || agentState === "connecting"
 
     return (
         <AnimatePresence>
@@ -72,31 +72,26 @@ export function TranscriptFooter({ transcript, agentState, audioVolumes, isVisib
                         )}
                     </AnimatePresence>
 
-                    {/* Thinking Pulse Animation - Clean minimal dot pulse */}
+                    {/* Thinking/Connecting Scanner Animation - Gradient bar moving back and forth */}
                     <AnimatePresence>
-                        {isThinking && (
+                        {showScanner && (
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5"
+                                className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden"
                             >
-                                {[0, 1, 2].map((i) => (
-                                    <motion.div
-                                        key={i}
-                                        className="w-2 h-2 rounded-full bg-orange-400/80"
-                                        animate={{
-                                            scale: [1, 1.3, 1],
-                                            opacity: [0.4, 1, 0.4],
-                                        }}
-                                        transition={{
-                                            duration: 1.2,
-                                            repeat: Infinity,
-                                            delay: i * 0.2,
-                                            ease: "easeInOut"
-                                        }}
-                                    />
-                                ))}
+                                <motion.div
+                                    initial={{ x: "-100%" }}
+                                    animate={{ x: "100%" }}
+                                    transition={{
+                                        repeat: Infinity,
+                                        repeatType: "mirror",
+                                        duration: 1.5,
+                                        ease: "easeInOut"
+                                    }}
+                                    className="w-full h-full bg-gradient-to-r from-transparent via-orange-500 to-transparent"
+                                />
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -115,8 +110,8 @@ export function TranscriptFooter({ transcript, agentState, audioVolumes, isVisib
                                 </motion.p>
                             )}
 
-                            {/* Agent Status - only show for non-thinking states or when no transcript */}
-                            {agentStateLabels[agentState] && !isThinking && (
+                            {/* Agent Status - only show for non-thinking/connecting states or when no transcript */}
+                            {agentStateLabels[agentState] && !showScanner && (
                                 <motion.p
                                     className="text-xs text-muted-foreground/60 tracking-wider uppercase"
                                     animate={{ opacity: [0.4, 0.7, 0.4] }}

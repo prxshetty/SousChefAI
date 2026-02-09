@@ -78,221 +78,234 @@ export function CookingView({ recipe, onNext, onPrev, onComplete }: CookingViewP
     }, [recipe.current_step_index])
 
     const isLastStep = recipe.current_step_index === recipe.steps.length - 1
-
-    // Calculate total cooking time
-    const totalTime = recipe.steps.reduce((acc, step) => acc + (step.duration_minutes || 0), 0)
+    const isFirstStep = recipe.current_step_index === 0
+    const progress = ((recipe.current_step_index + 1) / recipe.steps.length) * 100
 
     return (
-        <div className="flex flex-col h-screen w-full overflow-hidden bg-gradient-to-br from-orange-50/50 to-amber-50/50">
-            {/* Header - Dish Summary */}
-            <motion.div
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="flex-shrink-0 px-6 py-4 bg-white/80 backdrop-blur-xl border-b border-orange-100/50"
-            >
-                <div className="flex items-center justify-between max-w-7xl mx-auto">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl shadow-lg shadow-orange-200">
-                            <UtensilsCrossed className="size-6 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-serif font-bold text-gray-900">
-                                {recipe.title || "Cooking Session"}
-                            </h1>
-                            <div className="flex items-center gap-4 mt-1">
-                                <span className="text-sm text-gray-500 flex items-center gap-1.5">
-                                    <Clock className="size-4" />
-                                    {totalTime > 0 ? `${totalTime} mins total` : "Time varies"}
-                                </span>
-                                <span className="text-sm text-gray-500">
-                                    {recipe.steps.length} steps
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="px-4 py-2 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">
-                            Step {currentStep.step_number} of {recipe.steps.length}
-                        </span>
-                    </div>
-                </div>
-            </motion.div>
+        <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
+            {/* Header - Minimal & Clean */}
 
-            {/* Main Content - 3 Columns */}
-            <div className="flex flex-1 min-h-0 gap-4 p-4 pb-24">
-                {/* LEFT COLUMN: Ingredients (~20%) */}
+
+            {/* Main Content - 2 Columns (40/60 split for better readability) */}
+            <div className="flex flex-1 min-h-0 bg-secondary/30">
+                {/* LEFT COLUMN: Instructions & Ingredients (40%) */}
                 <motion.div
-                    initial={{ x: -30, opacity: 0 }}
+                    initial={{ x: -20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: 0.1 }}
-                    className="w-[18%] flex-shrink-0"
+                    className="w-[40%] flex-shrink-0 border-r border-border/40 bg-background flex flex-col"
                 >
-                    <div className="h-full bg-white/90 backdrop-blur-xl rounded-2xl p-5 shadow-sm border border-orange-100/50 flex flex-col">
-                        <h3 className="font-serif text-lg text-orange-950 mb-4 flex items-center gap-2 flex-shrink-0">
-                            <ChefHat className="size-5 text-orange-500" />
-                            Ingredients
-                        </h3>
-                        <div
-                            ref={scrollRef}
-                            className="overflow-y-auto flex-1 pr-2 scrollbar-thin scrollbar-thumb-orange-200 scrollbar-track-transparent"
-                        >
-                            <ul className="space-y-2">
-                                {recipe.ingredients.map((ing, i) => (
-                                    <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-orange-400 mt-1.5 shrink-0" />
-                                        {ing}
-                                    </li>
-                                ))}
-                            </ul>
+                    {/* Header - Minimal & Clean (Moved to Left Column) */}
+                    <div className="flex-shrink-0 px-8 py-5 bg-background border-b border-border/40">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-orange-50 rounded-xl">
+                                    <UtensilsCrossed className="size-5 text-orange-600" />
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-serif text-foreground tracking-tight">
+                                        {recipe.title || "Cooking Session"}
+                                    </h1>
+                                    <div className="flex items-center gap-3 mt-0.5">
+                                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                                            <Clock className="size-3.5" />
+                                            {recipe.steps.reduce((acc, step) => acc + (step.duration_minutes || 0), 0) > 0
+                                                ? `${recipe.steps.reduce((acc, step) => acc + (step.duration_minutes || 0), 0)} mins`
+                                                : "Time varies"}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">•</span>
+                                        <span className="text-sm text-muted-foreground">
+                                            {recipe.steps.length} steps
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </motion.div>
+                    <div className="flex-1 overflow-y-auto p-8 flex flex-col">
+                        {/* Step Navigation - Top
+                        <div className="flex items-center justify-between mb-8">
+                            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                Current Instruction
+                            </span>
+                            {currentStep.duration_minutes && (
+                                <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium flex items-center gap-1.5 border border-blue-100">
+                                    <Clock className="size-3.5" />
+                                    {currentStep.duration_minutes} min
+                                </span>
+                            )}
+                        </div> */}
 
-                {/* CENTER COLUMN: Step Content (~35%) */}
-                <motion.div
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="w-[35%] flex-shrink-0"
-                >
-                    <div className="h-full bg-white/90 backdrop-blur-xl rounded-2xl p-6 shadow-sm border border-orange-100/50 flex flex-col relative overflow-hidden">
-                        {/* Background decoration */}
-                        <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 bg-orange-100/40 rounded-full blur-3xl pointer-events-none" />
+                        {/* Main Instruction */}
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={currentStep.step_number}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-6"
+                            >
+                                <h2 className="text-3xl md:text-4xl font-serif text-foreground leading-tight tracking-tight">
+                                    {currentStep.instruction}
+                                </h2>
 
-                        <div className="flex-1 flex flex-col relative z-10">
-                            {/* Step header */}
-                            <div className="flex items-center gap-3 mb-4 flex-shrink-0">
-                                {currentStep.duration_minutes && (
-                                    <span className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium flex items-center gap-1.5">
-                                        <Clock className="size-4" />
-                                        {currentStep.duration_minutes} mins
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Step instruction */}
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={currentStep.step_number}
-                                    initial={{ opacity: 0, y: 15 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -15 }}
-                                    className="flex-1 flex flex-col"
-                                >
-                                    <h2 className="text-2xl font-serif text-gray-900 leading-relaxed mb-4">
-                                        {currentStep.instruction}
-                                    </h2>
-
-                                    {currentStep.tips && (
-                                        <motion.div
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            transition={{ delay: 0.3 }}
-                                            className="mt-auto p-4 bg-yellow-50/90 rounded-xl border border-yellow-200/50"
-                                        >
-                                            <p className="text-yellow-800 text-sm flex gap-2">
-                                                <span className="font-bold">💡 Tip:</span>
+                                {currentStep.tips && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        transition={{ delay: 0.2 }}
+                                        className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3 items-start"
+                                    >
+                                        <div className="p-1.5 bg-amber-100 rounded-full shrink-0 mt-0.5">
+                                            <div className="size-3 bg-amber-500 rounded-full" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-1">Chef's Tip</p>
+                                            <p className="text-amber-900/80 text-sm leading-relaxed">
                                                 {currentStep.tips}
                                             </p>
-                                        </motion.div>
-                                    )}
-                                </motion.div>
-                            </AnimatePresence>
-                        </div>
-
-                        {/* Navigation */}
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4 flex-shrink-0">
-                            <button
-                                onClick={onPrev}
-                                disabled={recipe.current_step_index === 0}
-                                className="flex items-center gap-2 px-5 py-2.5 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-all font-medium text-sm"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Previous
-                            </button>
-
-                            <button
-                                onClick={isLastStep ? onComplete : onNext}
-                                className={cn(
-                                    "flex items-center gap-2 px-6 py-2.5 rounded-full text-white shadow-lg transition-all font-bold text-sm",
-                                    isLastStep
-                                        ? "bg-green-600 hover:bg-green-700 shadow-green-200"
-                                        : "bg-orange-500 hover:bg-orange-600 shadow-orange-200"
-                                )}
-                            >
-                                {isLastStep ? "Finish" : "Next"}
-                                {isLastStep ? <Check className="size-4" /> : <ArrowRight className="size-4" />}
-                            </button>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* RIGHT COLUMN: YouTube Video (~47%) */}
-                <motion.div
-                    initial={{ x: 30, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="flex-1"
-                >
-                    <div className="h-full bg-black/5 rounded-2xl overflow-hidden border border-white/30 backdrop-blur-sm relative">
-                        <AnimatePresence mode="wait">
-                            {isLoading ? (
-                                <motion.div
-                                    key="loading"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50"
-                                >
-                                    <div className="text-center">
-                                        <motion.div
-                                            animate={{ rotate: 360 }}
-                                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                                            className="w-12 h-12 rounded-full border-3 border-orange-200 border-t-orange-500 mx-auto mb-3"
-                                        />
-                                        <p className="text-gray-500 text-sm">Finding video...</p>
-                                    </div>
-                                </motion.div>
-                            ) : video ? (
-                                <motion.div
-                                    key={video.videoId}
-                                    initial={{ opacity: 0, scale: 0.98 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="w-full h-full"
-                                >
-                                    <iframe
-                                        src={`https://www.youtube.com/embed/${video.videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&loop=1`}
-                                        title={video.title}
-                                        className="w-full h-full"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowFullScreen
-                                    />
-                                </motion.div>
-                            ) : (
-                                <motion.div
-                                    key="fallback"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-50"
-                                >
-                                    <div className="text-center p-8">
-                                        <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-4">
-                                            <Play className="size-6 text-gray-400" />
                                         </div>
-                                        <p className="text-gray-500 font-medium">
-                                            {videoError ? "Couldn't find a video" : "Video will appear here"}
-                                        </p>
-                                        <p className="text-xs text-gray-400 mt-2">
-                                            Searching for: "{currentStep.instruction.slice(0, 40)}..."
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            )}
+                                    </motion.div>
+                                )}
+                                {currentStep.duration_minutes && (
+                                    <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium flex items-center gap-1.5 border border-blue-100">
+                                        <Clock className="size-3.5" />
+                                        {currentStep.duration_minutes} min
+                                    </span>
+                                )}
+                            </motion.div>
                         </AnimatePresence>
+
+                        <div className="flex-1" /> {/* Spacer */}
+
+                        {/* Ingredients Section - Full height, no scroll constraint */}
+                        <div className="mt-8 pt-8 border-t border-border/40">
+                            <div className="flex items-center gap-2 mb-4">
+                                <ChefHat className="size-4 text-orange-500" />
+                                <h3 className="text-sm font-medium text-foreground uppercase tracking-wide">Ingredients needed</h3>
+                            </div>
+                            <div
+                                ref={scrollRef}
+                                className="grid grid-cols-2 gap-2"
+                            >
+                                {recipe.ingredients.map((ing, i) => (
+                                    <div
+                                        key={i}
+                                        className="flex items-center gap-2 pl-2 pr-3 py-1.5 bg-secondary hover:bg-secondary/80 transition-colors rounded-lg border border-border/50 group cursor-default"
+                                    >
+                                        <span className="text-lg group-hover:scale-110 transition-transform">{ing.emoji}</span>
+                                        <span className="text-sm font-medium text-foreground/80">
+                                            {ing.quantity} {ing.name}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Navigation Buttons - Minimal outline style */}
+                    <div className="p-6 border-t border-border/40 bg-background/80 backdrop-blur-sm sticky bottom-0 z-10 flex gap-4">
+                        <button
+                            onClick={onPrev}
+                            disabled={isFirstStep}
+                            className="flex-1 py-2.5 rounded-lg border border-border/60 bg-transparent text-muted-foreground hover:border-foreground/30 hover:text-foreground disabled:opacity-30 disabled:hover:border-border/60 transition-all text-sm font-medium flex items-center justify-center gap-2"
+                        >
+                            <ArrowLeft className="size-4" />
+                            Previous
+                        </button>
+
+                        <button
+                            onClick={isLastStep ? onComplete : onNext}
+                            className={cn(
+                                "flex-[2] py-2.5 rounded-lg border transition-all text-sm font-medium flex items-center justify-center gap-2",
+                                isLastStep
+                                    ? "border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+                                    : "border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white"
+                            )}
+                        >
+                            {isLastStep ? "Finish Cooking" : "Next Step"}
+                            {isLastStep ? <Check className="size-4" /> : <ArrowRight className="size-4" />}
+                        </button>
                     </div>
                 </motion.div>
+
+                {/* RIGHT COLUMN: Video (60%) */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="flex-1 bg-black relative overflow-hidden h-full"
+                >
+                    <AnimatePresence mode="wait">
+                        {isLoading ? (
+                            <motion.div
+                                key="loading"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 flex items-center justify-center bg-zinc-900"
+                            >
+                                <div className="text-center space-y-4">
+                                    <div className="relative">
+                                        <div className="w-12 h-12 rounded-full border-2 border-zinc-800 border-t-orange-500 animate-spin" />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="w-2 h-2 bg-orange-500 rounded-full" />
+                                        </div>
+                                    </div>
+                                    <p className="text-zinc-500 text-sm font-medium animate-pulse">Finding the perfect clip...</p>
+                                </div>
+                            </motion.div>
+                        ) : video ? (
+                            <motion.div
+                                key={video.videoId}
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="w-full h-full"
+                            >
+                                <iframe
+                                    src={`https://www.youtube.com/embed/${video.videoId}?autoplay=1&mute=1&rel=0&modestbranding=1&loop=1`}
+                                    title={video.title}
+                                    className="w-full h-full"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                />
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="fallback"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 flex items-center justify-center bg-zinc-900"
+                            >
+                                <div className="text-center p-8 max-w-md">
+                                    <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center mx-auto mb-6 shadow-inner ring-1 ring-white/5">
+                                        <Play className="size-6 text-zinc-600" />
+                                    </div>
+                                    <h3 className="text-zinc-300 font-medium text-lg mb-2">
+                                        {videoError ? "No video found" : "Video placeholder"}
+                                    </h3>
+                                    <p className="text-zinc-500 text-sm leading-relaxed">
+                                        {videoError
+                                            ? "We couldn't find a matching video for this step. Follow the text instructions carefully."
+                                            : `Visual guide for: "${currentStep.instruction.slice(0, 50)}..."`}
+                                    </p>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+            </div>
+
+            {/* Progress Bar - Thin Orange Strip at Bottom */}
+            <div className="h-0.5 bg-border relative w-full">
+                <motion.div
+                    className="absolute inset-y-0 left-0 bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                />
             </div>
         </div>
     )

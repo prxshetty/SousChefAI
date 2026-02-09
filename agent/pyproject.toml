@@ -11,6 +11,9 @@ dependencies = [
     "llama-index-embeddings-openai>=0.3.0",
     "llama-index-llms-openai>=0.3.0",
     "llama-index-vector-stores-pinecone>=0.4.0",
+    "pillow>=12.0.0",
     "pinecone>=5.0.0",
+    "pymupdf>=1.26.7",
+    "google-genai>=0.2.0",
     "python-dotenv",
 ]

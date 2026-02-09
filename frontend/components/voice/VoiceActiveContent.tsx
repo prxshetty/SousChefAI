@@ -223,6 +223,36 @@ export function VoiceActiveContent({
         const file = event.target.files?.[0]
         if (file) {
             await onUpload(file)
+
+            // After successful upload, notify the agent via RPC
+            if (room) {
+                try {
+                    // Try to find the agent participant
+                    let agentIdentity = agentAudioTrack?.participant?.identity
+
+                    if (!agentIdentity) {
+                        // Fallback: use first remote participant
+                        const remoteParticipants = Array.from(room.remoteParticipants.values())
+                        if (remoteParticipants.length > 0) {
+                            agentIdentity = remoteParticipants[0].identity
+                        }
+                    }
+
+                    if (agentIdentity) {
+                        console.log(`Calling reload_cookbook RPC on agent: ${agentIdentity}`)
+                        await room.localParticipant.performRpc({
+                            destinationIdentity: agentIdentity,
+                            method: "reload_cookbook",
+                            payload: JSON.stringify({})
+                        })
+                        console.log("RPC call successful")
+                    } else {
+                        console.warn("Could not find agent participant to call RPC")
+                    }
+                } catch (error) {
+                    console.error("Failed to call reload_cookbook RPC:", error)
+                }
+            }
         }
     }
 

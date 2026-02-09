@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
 
     const room = request.nextUrl.searchParams.get('room') || defaultRoom;
     const username = request.nextUrl.searchParams.get('username') || 'user';
+    const apiKeyParam = request.nextUrl.searchParams.get('apiKey') || '';
 
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    const roomMetadata = JSON.stringify({ voice });
+    const roomMetadata = JSON.stringify({ voice, apiKey: apiKeyParam });
     const httpUrl = livekitUrl.replace('wss://', 'https://');
 
     const roomService = new RoomServiceClient(httpUrl, apiKey, apiSecret);

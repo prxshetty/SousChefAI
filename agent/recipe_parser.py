@@ -6,6 +6,12 @@ from pydantic import BaseModel, Field
 
 
 # Pydantic models for Gemini structured output
+class IngredientSchema(BaseModel):
+    name: str = Field(description="Clean name of the ingredient")
+    quantity: str = Field(description="Quantity and unit (e.g., '2', '500g', '1/2 cup')")
+    emoji: str = Field(description="A single relevant emoji for this ingredient")
+
+
 class RecipeStepSchema(BaseModel):
     step_number: int = Field(description="Step number in sequence")
     instruction: str = Field(description="The cooking instruction for this step")
@@ -18,8 +24,15 @@ class RecipePlanSchema(BaseModel):
     servings: str = Field(description="Number of servings (e.g., '4 servings')")
     prep_time: str = Field(description="Preparation time (e.g., '15 mins')")
     cook_time: str = Field(description="Cooking time (e.g., '30 mins')")
-    ingredients: List[str] = Field(description="List of ingredients with quantities")
+    ingredients: List[IngredientSchema] = Field(description="List of structured ingredients")
     steps: List[RecipeStepSchema] = Field(description="Step-by-step cooking instructions")
+
+
+@dataclass
+class Ingredient:
+    name: str
+    quantity: str
+    emoji: str
 
 
 # Dataclasses for internal use (with completed tracking)
@@ -38,7 +51,7 @@ class RecipePlan:
     servings: str
     prep_time: str
     cook_time: str
-    ingredients: List[str]
+    ingredients: List[Ingredient]
     steps: List[RecipeStep]
     current_step_index: int = 0
     
@@ -51,7 +64,14 @@ class RecipePlan:
             "servings": self.servings,
             "prep_time": self.prep_time,
             "cook_time": self.cook_time,
-            "ingredients": self.ingredients,
+            "ingredients": [
+                {
+                    "name": i.name,
+                    "quantity": i.quantity,
+                    "emoji": i.emoji
+                }
+                for i in self.ingredients
+            ],
             "steps": [
                 {
                     "step_number": s.step_number,
@@ -89,14 +109,20 @@ User wants to make: {recipe_query}
 Cookbook content:
 {rag_content}
 
+Strict Guidelines for Extraction:
+1. Ingredients: Extract EACH actual ingredient with its exact quantity and unit. 
+   - Clean up noisy text.
+   - Assign a relevant emoji to each ingredient. 
+2. Steps: Extract clear, sequential cooking instructions.
+3. Estimations: Estimate prep_time and cook_time if not explicitly stated.
+
 Extract the recipe with all ingredients and step-by-step instructions.
-Estimate prep_time and cook_time if not explicitly stated.
 """
         
         # Use asyncio.to_thread for the synchronous Gemini call
         response = await asyncio.to_thread(
             lambda: client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=prompt,
                 config={
                     "response_mime_type": "application/json",
@@ -109,6 +135,15 @@ Estimate prep_time and cook_time if not explicitly stated.
         parsed = RecipePlanSchema.model_validate_json(response.text)
         
         # Convert to internal dataclass format
+        ingredients = [
+            Ingredient(
+                name=i.name,
+                quantity=i.quantity,
+                emoji=i.emoji
+            )
+            for i in parsed.ingredients
+        ]
+        
         steps = [
             RecipeStep(
                 step_number=s.step_number,
@@ -124,7 +159,7 @@ Estimate prep_time and cook_time if not explicitly stated.
             servings=parsed.servings,
             prep_time=parsed.prep_time,
             cook_time=parsed.cook_time,
-            ingredients=parsed.ingredients,
+            ingredients=ingredients,
             steps=steps
         )
         

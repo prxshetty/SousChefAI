@@ -10,7 +10,7 @@ from livekit.plugins import google
 env_file = Path(__file__).parent / ".env.local"
 load_dotenv(env_file)
 
-from rag import get_rag, reload_rag, clear_rag
+from rag import get_rag, reload_rag, clear_rag, CookbookRAG
 from tools.cookbook import CookbookMixin
 from tools.timer import TimerMixin
 from tools.shopping import ShoppingListMixin
@@ -96,12 +96,16 @@ Remember: You're having a voice conversation, so keep it natural and flowing!
 class SousChefAgent(Agent, CookbookMixin, TimerMixin, ShoppingListMixin, CookingMixin):
     """The SousChef voice agent with RAG capabilities."""
     
-    def __init__(self, chat_ctx: ChatContext | None = None, session: AgentSession | None = None, room = None) -> None:
+    def __init__(self, chat_ctx: ChatContext | None = None, session: AgentSession | None = None, room = None, api_key: str = None) -> None:
         super().__init__(
             instructions=SOUSCHEF_INSTRUCTIONS,
             chat_ctx=chat_ctx,
         )
-        self.rag = get_rag()
+        if api_key:
+             print(f"Using custom API key for RAG")
+             self.rag = CookbookRAG(api_key=api_key)
+        else:
+             self.rag = get_rag()
         self._session = session
         self._room = room
 
@@ -125,13 +129,14 @@ async def souschef_session(ctx: agents.JobContext):
                 voice_preference = potential_voice
                 print(f"Voice from room name: {voice_preference}")
     
-    # fallback  
-    if voice_preference == DEFAULT_VOICE:
+    api_key = None
+    if ctx.room.metadata:
         try:
-            if ctx.room.metadata:
-                metadata = json.loads(ctx.room.metadata)
-                voice_preference = metadata.get("voice", DEFAULT_VOICE)
-                print(f"Voice from room metadata: {voice_preference}")
+            metadata = json.loads(ctx.room.metadata)
+            voice_preference = metadata.get("voice", voice_preference)
+            api_key = metadata.get("apiKey")
+            if api_key:
+                print("Received custom API key from client")
         except (json.JSONDecodeError, Exception) as e:
             print(f"Could not parse metadata: {e}")
     
@@ -143,6 +148,7 @@ async def souschef_session(ctx: agents.JobContext):
         llm=google.realtime.RealtimeModel(
             model="gemini-2.5-flash-native-audio-preview-09-2025",  # Latest stable Live API model
             voice=voice_name,
+            api_key=api_key,
             instructions=SOUSCHEF_INSTRUCTIONS,
             temperature=0.8,
             enable_affective_dialog=True,  # Natural emotional responses
@@ -152,7 +158,7 @@ async def souschef_session(ctx: agents.JobContext):
     )
     
     # agent with session and room reference now for data publishing
-    agent = SousChefAgent(session=session, room=ctx.room)
+    agent = SousChefAgent(session=session, room=ctx.room, api_key=api_key)
     # session before registering RPC !
     await session.start(
         room=ctx.room,
@@ -171,7 +177,11 @@ async def souschef_session(ctx: agents.JobContext):
     # Handle UI step navigation clicks to sync agent state
     def handle_data_received(payload: bytes, participant: rtc.Participant | None = None, kind: rtc.DataPacketKind | None = None, topic: str | None = None):
         try:
-            data = json.loads(payload.decode('utf-8'))
+            payload_data = payload.data if hasattr(payload, 'data') else payload
+            if isinstance(payload_data, bytes):
+                data = json.loads(payload_data.decode('utf-8'))
+            else:
+                data = json.loads(str(payload_data))
             if data.get("type") == "ui_step_change":
                 action = data.get("action")
                 step_index = data.get("step_index")
@@ -188,6 +198,14 @@ async def souschef_session(ctx: agents.JobContext):
                     elif action == "previous" and step_index >= 0:
                         agent.current_recipe.current_step_index = step_index
                         print(f"UI navigated back to step {step_index + 1}")
+            
+            if data.get("type") == "request_recipe":
+                recipe_title = data.get("title")
+                if recipe_title:
+                    print(f"UI requested recipe: {recipe_title}")
+                    import asyncio
+                    asyncio.create_task(agent.generate_recipe_plan(None, recipe_title))
+
         except (json.JSONDecodeError, Exception) as e:
             print(f"Error handling UI step change: {e}")
     
@@ -205,7 +223,8 @@ async def souschef_session(ctx: agents.JobContext):
         )
         
         # Running the blocking indexing in a thread to not block the event loop so ai can still respond. ( Realtime wohoo)
-        success, message = await asyncio.to_thread(reload_rag)
+        # Use agent.rag instead of global reload_rag
+        success, message = await asyncio.to_thread(agent.rag.reload_index)
         
         if success:
             await session.generate_reply(
@@ -223,7 +242,7 @@ async def souschef_session(ctx: agents.JobContext):
         """Handle RPC call from frontend to clear cookbook."""
         import asyncio
         print("Received clear_cookbook RPC call")
-        success, message = await asyncio.to_thread(clear_rag)
+        success, message = await asyncio.to_thread(agent.rag.clear_index)
         
         if success:
             await session.generate_reply(
@@ -241,9 +260,9 @@ async def souschef_session(ctx: agents.JobContext):
         """Silent clear on disconnect - no voice response."""
         import asyncio
         print("Received clear_cookbook_silent RPC call (session ending)")
-        success, message = await asyncio.to_thread(clear_rag)
+        success, message = await asyncio.to_thread(agent.rag.clear_index)
         return message
-    
+
     await session.generate_reply(
         instructions="Greet the user warmly as SousChef, their personal cooking assistant. Keep it brief and friendly, and ask what they'd like help with today."
     )
