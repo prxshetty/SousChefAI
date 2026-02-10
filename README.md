@@ -2,9 +2,20 @@
 
 A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs or recipe images (grandma's handwritten recipes, cookbook photos), ask questions, get recipe advice, and have a natural conversation about food — all through voice!
 
-🌐 **[Live Demo](https://main.d2iyik5u6ri7ha.amplifyapp.com/)**
+![SousChef Voice Interface](img/voiceactive.png)
 
-<img width="1280" height="1422" alt="demo" src="https://github.com/user-attachments/assets/668759f5-ae6c-4409-b8e4-19d948716646" />
+---
+
+## ✨ Immersive Cooking Mode
+
+SousChef now features a dual-pane immersive mode that brings your recipes to life:
+- **Guided Content**: Recipe steps and ingredients on the left.
+- **Visual Aid**: Watch the recipe video or technique right on the same screen.
+- **Smart Tools**: Timers and Shopping Lists auto-appear when needed.
+
+| Recipe Guidance | Visual Immersion |
+|:---:|:---:|
+| ![Cooking Mode](img/cookingmode.png) | ![Active Tools](img/cookingmodetools.png) |
 
 
 ---
@@ -18,7 +29,7 @@ A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs or
 │                              Client Browser                                  │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                     Next.js Frontend (AWS Amplify)                   │   │
-│  │  - Voice selection (male/female)                                     │   │
+│  │  - Voice selection (Male/Female/Neutral)                             │   │
 │  │  - PDF & Image upload for RAG                                        │   │
 │  │  - Real-time transcript display                                      │   │
 │  │  - WebRTC audio streaming                                            │   │
@@ -39,21 +50,16 @@ A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs or
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │                      LiveKit Agents Framework                        │   │
 │  │                                                                      │   │
-│  │   ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐         │   │
-│  │   │   VAD   │ -> │   STT   │ -> │   LLM   │ -> │   TTS   │         │   │
-│  │   │ Silero  │    │ Speech- │    │  GPT-5  │    │Deepgram │         │   │
-│  │   └─────────┘    │  matics │    │  mini   │    │ Aura 2  │         │   │
-│  │                  └─────────┘    └────┬────┘    └─────────┘         │   │
-│  │                                      │                              │   │
-│  │                              ┌───────▼───────┐                      │   │
-│  │                              │   RAG Query   │                      │   │
-│  │                              │  (LlamaIndex) │                      │   │
-│  │                              └───────┬───────┘                      │   │
-│  │                                      │                              │   │
-│  │                              ┌───────▼───────┐                      │   │
-│  │                              │   Pinecone    │                      │   │
-│  │                              │ (Vector Store)│                      │   │
-│  └──────────────────────────────┴───────────────┴──────────────────────┘   │
+│  │   ┌─────────┐      ┌───────────────────────────────────┐             │   │
+│  │   │   VAD   │  ->  │    Gemini 2.5 Multi-modal Live     │             │   │
+│  │   │ Silero  │      │  (Native Audio-to-Audio / RAG)    │             │   │
+│  │   └─────────┘      └─────────────────┬─────────────────┘             │   │
+│  │                                      │                               │   │
+│  │                              ┌───────▼───────┐                       │   │
+│  │                              │   RAG Query   │                       │   │
+│  │                              │  (LlamaIndex) │                       │   │
+│  │                              └───────┬───────┘                       │   │
+│  └──────────────────────────────┴───────▼───────┴───────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -67,16 +73,15 @@ A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs or
 4. **Agent Joins** → Python agent (on EC2) receives job from LiveKit Cloud and joins the room
 5. **Voice Capture** → Browser captures microphone audio via WebRTC
 6. **VAD (Voice Activity Detection)** → Silero detects when user is speaking
-7. **STT (Speech-to-Text)** → Speechmatics transcribes audio to text
-8. **RAG Query** → If relevant, LLM uses `search_cookbook` tool to query Pinecone
-9. **LLM Processing** → GPT-5-mini generates response, may call tools (timer, shopping list)
-10. **TTS (Text-to-Speech)** → Deepgram Aura 2 converts response to natural speech
-11. **Audio Playback** → Audio streams back to browser via WebRTC
+7. **Multi-modal Processing** → Gemini 2.5 Flash native Live API processes audio and generates responses
+8. **RAG Query** → If relevant, LLM uses `search_cookbook` tool to query the vector store
+9. **Native Audio Output** → Gemini generates natural speech directly (native audio-to-audio)
+10. **Audio Playback** → Audio streams back to browser via WebRTC
 
 The RAG (Retrieval-Augmented Generation) pipeline allows users to upload cooking PDFs or snap photos of recipes:
 
 ```
-PDF/Image Upload → [OCR (Gemini)] → Chunking → Embedding → Pinecone → Query → Context Injection → LLM
+PDF/Image Upload → [OCR (Gemini)] → Chunking → Embedding (Gemini) → LlamaIndex → Query → Context Injection → LLM
 ```
 
 **Implementation:**
@@ -87,10 +92,10 @@ PDF/Image Upload → [OCR (Gemini)] → Chunking → Embedding → Pinecone → 
 2. **Ingestion (LlamaIndex)**:
    - Documents parsed with `SimpleDirectoryReader` (supports `.pdf` and `.txt`)
    - Text chunked using `SentenceSplitter` (chunk_size=512, overlap=50)
-   - Chunks embedded using OpenAI's `text-embedding-3-small`
-3. **Vector Storage (Pinecone)**:
-   - Embeddings stored in Pinecone serverless index
-   - Namespace: `souschef` for isolation
+   - Chunks embedded using **Gemini Embedding 001** (or 004)
+3. **Vector Storage**:
+   - Embeddings stored in an in-memory or serverless index
+   - Optimized for per-session recipe retrieval
 4. **Query Flow**:
    - User asks cooking question
    - Keywords detected (recipe, cook, ingredient, etc.)
@@ -127,14 +132,10 @@ The agent has built-in function tools that the LLM intelligently decides when to
 |----------|------------|---------|
 | **Voice Agent** | LiveKit Agents SDK | Real-time voice infrastructure |
 | **VAD** | Silero VAD | Detect speech activity |
-| **STT** | Speechmatics | Speech-to-text transcription |
-| **LLM** | OpenAI GPT-5-mini | Conversational AI |
-| **TTS** | Deepgram Aura 2 | Natural text-to-speech |
-| **Turn Detection** | LiveKit Multilingual Model | Know when user stops talking |
+| **Multi-modal AI** | **Gemini 2.5 Flash** | Native audio-to-audio & vision |
 | **RAG Framework** | LlamaIndex | Document ingestion and querying |
-| **OCR Service** | Gemini 2.0 Flash | Image-to-text for handwritten recipes |
-| **Vector Database** | Pinecone (Serverless) | Semantic search |
-| **Embeddings** | OpenAI text-embedding-3-small | Text vectorization |
+| **OCR / Vision** | Gemini 2.0 Flash | Image-to-text for handwritten recipes |
+| **Embeddings** | Gemini Embedding 001 | High-performance vectorization |
 | **Frontend** | Next.js 14 + React 18 | Web application |
 | **Styling** | Tailwind CSS + Framer Motion | UI and animations |
 | **Frontend Hosting** | AWS Amplify | Serverless Next.js hosting |
@@ -150,8 +151,7 @@ The agent has built-in function tools that the LLM intelligently decides when to
 - Python 3.11+ with [`uv`](https://github.com/astral-sh/uv) package manager
 - Node.js 18+ with `npm`
 - [LiveKit Cloud](https://cloud.livekit.io) account
-- [OpenAI API key](https://platform.openai.com)
-- [Pinecone API key](https://www.pinecone.io/) (free tier works)
+- [Google AI Studio Key](https://aistudio.google.com/app/apikey) (Gemini)
 
 ### Option 1: Run Locally
 
@@ -172,8 +172,7 @@ cp .env.example .env.local
 
 # Edit .env.local with your API keys:
 # - LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET
-# - OPENAI_API_KEY
-# - PINECONE_API_KEY
+# - GOOGLE_API_KEY (Gemini Key)
 
 # Install dependencies and run
 uv sync
@@ -274,9 +273,9 @@ SousChef AI/
 
 | Decision | Trade-off | Reasoning |
 |----------|-----------|-----------|
-| **STT-LLM-TTS Pipeline** vs OpenAI Realtime API | Higher latency (~1-2s) but more flexibility | Can swap any component, use custom RAG, better control |
+| **Gemini Live API** vs Legacy Pipeline | Ultra-low latency native audio-to-audio | Faster, more natural responses; single API provider |
 | **t2.micro with Swap** vs larger instance | Slower under load, but free tier eligible | Demo-appropriate; upgrade to t2.small for production |
-| **Pinecone Serverless** vs self-hosted | Vendor dependency but zero ops | Free tier sufficient; managed scaling |
+| **In-Memory / Pinecone** | Local dev speed vs managed scaling | Efficient session-based storage |
 | **Per-session RAG clearing** | User must re-upload each session | Prevents data leakage between users; simplifies auth |
 | **Multiple PDFs per session** | All uploads accumulated and re-indexed together | Users can query across multiple cookbooks within a session |
 
@@ -285,14 +284,13 @@ SousChef AI/
 - **Frontend (AWS Amplify)**: Serverless Next.js hosting with automatic HTTPS, CI/CD from GitHub
 - **Agent (AWS EC2)**: Always-on instance required for WebSocket connections; t2.micro with 2GB swap sufficient for demo load
 - **LiveKit Cloud**: Managed WebRTC infrastructure; free tier for development
-- **Pinecone**: Serverless vector DB; free tier provides 100K vectors
 
 ### RAG Assumptions
 
 | Aspect | Choice | Rationale |
 |--------|--------|-----------|
-| **Vector Database** | Pinecone Serverless | Simple API, generous free tier, no infra management |
-| **Embedding Model** | OpenAI text-embedding-3-small | Cost-effective ($0.02/1M tokens), good quality |
+| **Vector Strategy** | LlamaIndex In-Memory | Superior performance for session-based single-cookbook usage |
+| **Embedding Model** | Gemini Embedding 001 | Native integration, very high performance |
 | **Chunk Size** | 512 tokens | Balances context preservation with retrieval precision |
 | **Chunk Overlap** | 50 tokens | Prevents losing context at chunk boundaries |
 | **Top-K Results** | 3 | Enough context without overwhelming LLM |
