@@ -1,8 +1,10 @@
-# SousChef AI 👨‍🍳
+
 
 <p align="center">
-  <img src="img/scai-logo.png" width="300" alt="SousChef AI Logo">
-</p>
+  <img src="img/scai-logo.png" width="100" alt="SousChef AI Logo">
+</p> 
+
+# SousChef AI
 
 A RAG-enabled voice cooking assistant built with LiveKit. Upload cooking PDFs or recipe images (grandma's handwritten recipes, cookbook photos), ask questions, get recipe advice, and have a natural conversation about food — all through voice!
 
