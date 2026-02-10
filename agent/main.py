@@ -1,5 +1,6 @@
 import json
 import os
+import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
 from livekit import agents, rtc
@@ -225,27 +226,30 @@ async def souschef_session(ctx: agents.JobContext):
     @ctx.room.local_participant.register_rpc_method("reload_cookbook")
     async def handle_reload_cookbook(data: rtc.RpcInvocationData) -> str:
         """Handle RPC call from frontend to reload cookbook."""
-        import asyncio
         print("Received reload_cookbook RPC call")
         
-        await session.generate_reply(
-            instructions="The user just uploaded a cookbook PDF. Acknowledge it immediately like 'Oh nice, I see you've uploaded a recipe! I'll go through it now - feel free to ask me anything in the meantime!' Keep it brief and friendly."
-        )
-        
-        # Running the blocking indexing in a thread to not block the event loop so ai can still respond. ( Realtime wohoo)
-        # Use agent.rag instead of global reload_rag
-        success, message = await asyncio.to_thread(agent.rag.reload_index)
-        
-        if success:
+        async def process_reload():
+            # Acknowledge immediately via voice
             await session.generate_reply(
-                instructions="You just finished processing the cookbook. Naturally interrupt to let the user know, like 'Alright, I've got your recipe loaded up now! What would you like to know about it?' Keep it brief and conversational."
+                instructions="The user just uploaded a cookbook PDF. Acknowledge it immediately like 'Oh nice, I see you've uploaded a recipe! I'll go through it now - feel free to ask me anything in the meantime!' Keep it brief and friendly."
             )
-        else:
-            await session.generate_reply(
-                instructions="There was an issue loading the cookbook. Apologize briefly and suggest they try again."
-            )
-        
-        return message
+            
+            # Running the blocking indexing in a thread to not block the event loop
+            success, message = await asyncio.to_thread(agent.rag.reload_index)
+            
+            if success:
+                await session.generate_reply(
+                    instructions="You just finished processing the cookbook. Naturally interrupt to let the user know, like 'Alright, I've got your recipe loaded up now! What would you like to know about it?' Keep it brief and conversational."
+                )
+            else:
+                await session.generate_reply(
+                    instructions="There was an issue loading the cookbook. Apologize briefly and suggest they try again."
+                )
+            print(f"Indexing background task completed: {message}")
+
+        # Schedule background task and return immediately
+        asyncio.create_task(process_reload())
+        return "Indexing started in background"
     
     @ctx.room.local_participant.register_rpc_method("clear_cookbook")
     async def handle_clear_cookbook(data: rtc.RpcInvocationData) -> str:
