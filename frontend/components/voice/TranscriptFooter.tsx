@@ -79,7 +79,7 @@ export function TranscriptFooter({ transcript, agentState, audioVolumes, isVisib
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden"
+                                className="absolute bottom-0 left-0 right-0 h-1.5 overflow-hidden"
                             >
                                 <motion.div
                                     initial={{ x: "-100%" }}
@@ -90,7 +90,7 @@ export function TranscriptFooter({ transcript, agentState, audioVolumes, isVisib
                                         duration: 1.5,
                                         ease: "easeInOut"
                                     }}
-                                    className="w-full h-full bg-gradient-to-r from-transparent via-orange-500 to-transparent"
+                                    className="w-full h-full bg-gradient-to-r from-transparent via-orange-400 via-orange-600 to-transparent shadow-[0_0_12px_rgba(251,146,60,0.8)]"
                                 />
                             </motion.div>
                         )}
