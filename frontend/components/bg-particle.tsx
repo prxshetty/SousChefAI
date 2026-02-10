@@ -293,6 +293,23 @@ const Particles: React.FC<ParticlesProps> = ({
             }
             circle.x += circle.dx + vx
             circle.y += circle.dy + vy
+
+            // Avoid center exclusion zone
+            const centerX = canvasSize.current.w / 2
+            const centerY = canvasSize.current.h / 2
+            const centerExclusionX = canvasSize.current.w * 0.35
+            const centerExclusionY = canvasSize.current.h * 0.35
+
+            if (Math.abs(circle.x - centerX) < centerExclusionX && Math.abs(circle.y - centerY) < centerExclusionY) {
+                // If drifted into center, slowly push it away or reset
+                const pushOutX = circle.x < centerX ? -1 : 1
+                const pushOutY = circle.y < centerY ? -1 : 1
+                circle.x += pushOutX * 2
+                circle.y += pushOutY * 2
+                circle.dx = -circle.dx // Reverse direction
+                circle.dy = -circle.dy
+            }
+
             circle.translateX +=
                 (mouse.current.x / (staticity / circle.magnetism) - circle.translateX) /
                 ease
